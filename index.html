@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>小小地球 · 卡通地球仪</title>
+</head>
+<body>
+  <div id="loading">正在召唤地球…</div>
+
+  <div id="title">🌍 小小地球<small>拖一拖 · 转一转 · 点一点，认识我们的星球</small></div>
+  <div id="tip">滚轮放大中国，看沙漠 · 雪山 · 桂林山水 · 草原</div>
+
+  <div id="boatTip" hidden>⌨️ <b>W/↑</b> 前进 · <b>A/D ←→</b> 转向 · <b>S/↓</b> 后退 · 小心别撞岸！</div>
+  <div id="flowLegend" hidden>
+    <b>大气环流</b> · 低纬吹向西（信风）、中纬吹向东（西风）、高纬吹向西（极地东风）
+  </div>
+
+  <div id="fact" hidden>
+    <button class="close" type="button" aria-label="关闭">✕</button>
+    <h3></h3>
+    <p></p>
+    <a class="more" target="_blank" rel="noopener noreferrer">百度百科详读 →</a>
+  </div>
+
+  <div id="controls">
+    <button class="btn on" id="btnCloud" type="button">云层</button>
+    <button class="btn" id="btnBoat" type="button">🚤 驾船</button>
+    <button class="btn" id="btnBand" type="button">气候带</button>
+    <button class="btn" id="btnFlow" type="button">大气环流</button>
+    <button class="btn" id="btnGrid" type="button">经纬网</button>
+    <button class="btn" id="btnCurrent" type="button">洋流</button>
+    <button class="btn on" id="btnSpin" type="button">自己转</button>
+
+    <div class="panel sun-box">
+      <label for="sun">☀️ 时间</label>
+      <input type="range" id="sun" min="0" max="24" step="0.5" value="12">
+    </div>
+
+    <div class="panel season-box">
+      <label for="season">🍂 季节</label>
+      <input type="range" id="season" min="1" max="12" step="1" value="1">
+      <span id="seasonLabel">1月 · 北半球冬</span>
+      <div class="season-btns">
+        <button class="sbtn" data-month="4" type="button">春 🌸</button>
+        <button class="sbtn" data-month="7" type="button">夏 ☀️</button>
+        <button class="sbtn" data-month="10" type="button">秋 🍂</button>
+        <button class="sbtn on" data-month="1" type="button">冬 ❄️</button>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="scene"></canvas>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
