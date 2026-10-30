@@ -47,8 +47,8 @@ export function initControls({ controls, sun, cloud, climateBands, circulation, 
     boatTip.hidden = !on;
     controls.autoRotate = on ? false : btnSpin.classList.contains('on');
     tip.textContent = on
-      ? '你在开船啦！开去哪儿？'
-      : '滚轮放大中国，看沙漠 · 雪山 · 桂林山水 · 草原';
+      ? '你在开船啦！↑ 前进 · ←→ 转向 · 小心别撞岸！'
+      : '点一点球面：热带温带下雨 💧、寒带下雪 ❄️ · 滚轮放大看中国地标';
     if (on) boat.state.speed = 0;
     if (onBoatChange) onBoatChange(on);
   });

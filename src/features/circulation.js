@@ -9,16 +9,18 @@ const mulberry32 = (seed) => () => {
 };
 
 /**
- * 三圈环流的风带（纬度区间 + 流向）
- * dir = -1 向西（信风 / 极地东风），+1 向东（盛行西风）
+ * 三圈环流风带 —— 南北半球方向镜像（地转偏向力相反）。
+ * 贴图坐标：+x = 屏幕右（东），+y = 屏幕下（南）。
+ * mx/my = 风的流向（彗星头部前进方向），spd = 流速（南半球西风带最强 = 咆哮西风带），
+ * op = 图层不透明度（寒带淡一些）。
  */
 export const FLOW_BANDS = [
-  { low: 60, high: 90, dir: -1 },
-  { low: 30, high: 60, dir: 1 },
-  { low: 0, high: 30, dir: -1 },
-  { low: -30, high: 0, dir: -1 },
-  { low: -60, high: -30, dir: 1 },
-  { low: -90, high: -60, dir: -1 },
+  { low: 60, high: 90, mx: -1, my: 0.4, spd: 0.05, op: 0.5, name: '北半球极地东风 ↙' },
+  { low: 30, high: 60, mx: 1, my: -0.4, spd: 0.13, op: 0.75, name: '北半球盛行西风 ↗' },
+  { low: 0, high: 30, mx: -1, my: 0.4, spd: 0.09, op: 0.65, name: '东北信风 ↘' },
+  { low: -30, high: 0, mx: -1, my: -0.4, spd: 0.09, op: 0.65, name: '东南信风 ↖' },
+  { low: -60, high: -30, mx: 1, my: 0.4, spd: 0.18, op: 0.8, name: '南半球盛行西风 ↘（咆哮西风带）' },
+  { low: -90, high: -60, mx: -1, my: -0.4, spd: 0.05, op: 0.5, name: '南半球极地东风 ↖' },
 ];
 
 /** 几何段比名义风带宽出的余量（度）：季节移动时风带在此范围内滑动，不用重建几何 */
@@ -26,9 +28,13 @@ const MARGIN = 10;
 const TEX_W = 512;
 const TEX_H = 128;
 
-/** 画一条彗星状流线：头部粗亮、尾部细淡 */
-function drawStreak(g, x0, y, length, bend, alpha) {
+/**
+ * 画一条彗星状流线：头部粗亮、尾部细淡，整体沿风向 (mx, my) 倾斜。
+ */
+function drawStreak(g, x0, y0, len, mx, my, alpha) {
   const SEG = 8;
+  const tx = x0 - mx * len;   // 尾部起点（头往后退）
+  const ty = y0 - my * len;
   for (let s = 0; s < SEG; s++) {
     const t0 = s / SEG;
     const t1 = (s + 1) / SEG;
@@ -37,8 +43,8 @@ function drawStreak(g, x0, y, length, bend, alpha) {
     g.strokeStyle = `rgba(255,255,255,${a.toFixed(3)})`;
     g.lineWidth = w;
     g.beginPath();
-    g.moveTo(x0 + length * t0, y + Math.sin(t0 * Math.PI) * bend);
-    g.lineTo(x0 + length * t1, y + Math.sin(t1 * Math.PI) * bend);
+    g.moveTo(tx + mx * len * t0, ty + my * len * t0);
+    g.lineTo(tx + mx * len * t1, ty + my * len * t1);
     g.stroke();
   }
 }
@@ -47,7 +53,7 @@ function drawStreak(g, x0, y, length, bend, alpha) {
  * 生成一条风带的贴图：几何段覆盖 [low-MARGIN, high+MARGIN]，
  * 流线只画在随季节滑动的 [low+shift, high+shift] 内，上下边缘柔和淡出。
  */
-function makeBandTexture(latLow, latHigh, shift, seed) {
+function makeBandTexture(latLow, latHigh, mx, my, shift, seed) {
   const c = document.createElement('canvas');
   c.width = TEX_W; c.height = TEX_H;
   const g = c.getContext('2d');
@@ -63,6 +69,7 @@ function makeBandTexture(latLow, latHigh, shift, seed) {
   if (ySpan < 6) return new THREE.CanvasTexture(c);
 
   const rnd = mulberry32(seed);
+  const slope = my / Math.abs(mx); // 单位水平位移对应的竖向倾斜
   const rows = ySpan > 60 ? 4 : 3;
   for (let r = 0; r < rows; r++) {
     const y = yTop + ySpan * ((r + 0.5) / rows + (rnd() - 0.5) * 0.1);
@@ -70,10 +77,11 @@ function makeBandTexture(latLow, latHigh, shift, seed) {
     for (let i = 0; i < perRow; i++) {
       const len = TEX_W * (0.06 + rnd() * 0.09);
       const x0 = rnd() * TEX_W;
-      const bend = (rnd() - 0.5) * 6;
       const alpha = 0.48 + rnd() * 0.3;
-      drawStreak(g, x0, y, len, bend, alpha);
-      if (x0 + len > TEX_W) drawStreak(g, x0 - TEX_W, y, len, bend, alpha); // 水平无缝
+      drawStreak(g, x0, y, len, mx, slope, alpha);
+      const tx = x0 - mx * len;
+      if (tx < 0) drawStreak(g, x0 + TEX_W, y, len, mx, slope, alpha);   // 水平无缝
+      if (tx > TEX_W) drawStreak(g, x0 - TEX_W, y, len, mx, slope, alpha);
     }
   }
 
@@ -99,7 +107,7 @@ function makeBandTexture(latLow, latHigh, shift, seed) {
 /**
  * 大气环流图层（三圈环流 + 赤道辐合带）
  * - 每条风带是一段球面壳 + 专属贴图（流线清晰不糊）
- * - 流向用 scale.x = -1 镜像，保证"粗头在前"
+ * - 南北半球风向镜像直接画进贴图（彗星头指向风吹去的方向），不再用 scale.x 镜像
  * - 季节移动只重画贴图（滑块拖动期间由 controls 层节流）
  */
 export function createCirculation(globe) {
@@ -118,11 +126,10 @@ export function createCirculation(globe) {
         (90 - geoHigh) * D, (geoHigh - geoLow) * D,
       ),
       new THREE.MeshBasicMaterial({
-        transparent: true, opacity: 0.7,
+        transparent: true, opacity: band.op,
         side: THREE.DoubleSide, depthWrite: false,
       }),
     );
-    mesh.scale.x = band.dir < 0 ? -1 : 1;
     group.add(mesh);
     return { band, mesh, tex: null, seed: 9000 + i * 53 };
   });
@@ -141,7 +148,9 @@ export function createCirculation(globe) {
 
   function redraw() {
     for (const item of bands) {
-      const next = makeBandTexture(item.band.low, item.band.high, shift, item.seed);
+      const next = makeBandTexture(
+        item.band.low, item.band.high, item.band.mx, item.band.my, shift, item.seed,
+      );
       if (item.tex) item.tex.dispose();
       item.tex = next;
       item.mesh.material.map = next;
@@ -162,7 +171,7 @@ export function createCirculation(globe) {
   function update(dt, t) {
     if (!group.visible) return;
     for (const item of bands) {
-      item.mesh.material.map.offset.x -= item.band.dir * dt * 0.1;
+      item.mesh.material.map.offset.x -= item.band.mx * dt * item.band.spd;
     }
     itcz.material.opacity = 0.28 + Math.sin(t * 1.1) * 0.1;
   }
