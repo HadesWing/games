@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>小动物数独乐园</title>
+<title>小动物数独乐园 v6</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; overflow-x: hidden; overflow-y: auto; }
@@ -163,7 +163,7 @@
     <span id="percentText">0%</span>
     <span id="scorePill">得分 100</span>
   </div>
-  <div id="totalText">总进度 0/72</div>
+  <div id="totalText">总进度 0/72 · v6</div>
   <div id="hintText">选一个小动物，点格子放进去；每行每列都不能重复哦！</div>
   <div id="clueBox"></div>
 </header>
@@ -546,7 +546,7 @@ function updateStats() {
   $("#barInner").style.width = pct + "%";
   $("#percentText").textContent = pct + "%";
   $("#scorePill").textContent = `本题 ${currentScore} 分`;
-  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${Object.keys(LEVELS).filter(i => levelDone(+i) >= LEVELS[i].total).length} 个关卡`;
+  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${Object.keys(LEVELS).filter(i => levelDone(+i) >= LEVELS[i].total).length} 个关卡 · v6`;
   // 关卡按钮小字
   document.querySelectorAll(".lvBtn").forEach((b, i) => {
     const s = b.querySelector("small");
