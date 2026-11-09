@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>小动物数独乐园</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(180deg, #ffe9f2 0%, #fff7e0 55%, #e0f7ff 100%);
+    display: flex; flex-direction: column; align-items: center;
+    user-select: none; touch-action: manipulation;
+  }
+  header { text-align: center; margin-top: 10px; }
+  h1 {
+    font-size: clamp(26px, 5.5vmin, 40px); color: #ff6f91; letter-spacing: 2px;
+    text-shadow: 0 3px 0 #fff, 0 5px 12px rgba(255,111,145,.25);
+  }
+  h1 .zoo { font-size: .9em; }
+  #levelBar { display: flex; gap: 10px; margin-top: 8px; }
+  .lvBtn {
+    border: none; border-radius: 999px; padding: 8px 18px;
+    font-size: clamp(14px, 2.6vmin, 18px); font-weight: bold; cursor: pointer;
+    background: #fff; color: #9aa3b2; box-shadow: 0 3px 8px rgba(0,0,0,.08);
+    transition: all .2s;
+  }
+  .lvBtn.active { background: #ffd166; color: #7a4b00; transform: scale(1.08); box-shadow: 0 4px 12px rgba(255,209,102,.5); }
+  #hintText {
+    margin-top: 8px; min-height: 1.6em; font-size: clamp(15px, 3vmin, 21px);
+    color: #5b7a99; font-weight: bold; text-align: center; padding: 0 12px;
+  }
+  #hintText.warn { color: #ff5470; animation: pop .3s; }
+  #hintText.good { color: #2fb379; animation: pop .3s; }
+
+  #boardWrap {
+    flex: 1; display: flex; align-items: center; justify-content: center; width: 100%;
+    position: relative;
+  }
+  #board {
+    display: grid; gap: clamp(4px, 1vmin, 10px);
+    background: #fff; padding: clamp(8px, 1.6vmin, 16px);
+    border-radius: 24px; box-shadow: 0 10px 30px rgba(120, 90, 160, .18);
+  }
+  .cell {
+    border-radius: 16px; background: #f4f6fb; position: relative; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .12s, background .15s;
+  }
+  .cell:hover { transform: scale(1.04); }
+  .cell.fixed { background: #fff3d6; cursor: default; }
+  .cell.fixed:hover { transform: none; }
+  .cell.selected-target { background: #d8f3ff; box-shadow: inset 0 0 0 3px #7fd8ff; }
+  .cell img { width: 78%; height: 78%; pointer-events: none; }
+  .cell.fixed img { opacity: .95; }
+  .cell.shake { animation: shake .35s; background: #ffe0e6; }
+  .cell.justPlaced { animation: dropIn .3s cubic-bezier(.2,1.6,.4,1); }
+  .cell.hinted { box-shadow: inset 0 0 0 4px #ffd166; }
+  @keyframes dropIn { 0% { transform: scale(.2) rotate(-15deg); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  @keyframes shake { 0%,100% { transform: translateX(0);} 20% { transform: translateX(-7px);} 40% { transform: translateX(7px);} 60% { transform: translateX(-5px);} 80% { transform: translateX(5px);} }
+  @keyframes pop { 0% { transform: scale(.85);} 60% { transform: scale(1.08);} 100% { transform: scale(1);} }
+
+  #tray {
+    display: flex; gap: clamp(8px, 1.8vmin, 18px); margin-bottom: 12px;
+    background: #fff; padding: clamp(8px, 1.6vmin, 14px) clamp(12px, 2.5vmin, 24px);
+    border-radius: 999px; box-shadow: 0 8px 24px rgba(120, 90, 160, .15);
+  }
+  .trayItem {
+    display: flex; flex-direction: column; align-items: center; cursor: pointer;
+    padding: 6px; border-radius: 16px; transition: all .15s; position: relative;
+  }
+  .trayItem img { width: clamp(40px, 8vmin, 62px); height: clamp(40px, 8vmin, 62px); transition: transform .15s; }
+  .trayItem span { font-size: clamp(12px, 2.2vmin, 16px); color: #6b7a8f; font-weight: bold; margin-top: 2px; }
+  .trayItem.pick { background: #fff0d6; box-shadow: 0 0 0 3px #ffd166; }
+  .trayItem.pick img { transform: scale(1.15); }
+  .trayItem.empty { opacity: .3; filter: grayscale(.8); }
+  .trayItem .badge {
+    position: absolute; top: -4px; right: -2px; background: #ff6f91; color: #fff;
+    font-size: clamp(10px, 1.8vmin, 13px); min-width: 1.6em; height: 1.6em; line-height: 1.6em;
+    border-radius: 999px; text-align: center; padding: 0 3px; font-weight: bold;
+  }
+
+  #btnBar { display: flex; gap: 14px; margin-bottom: 12px; }
+  .actBtn {
+    border: none; border-radius: 999px; padding: 10px 22px;
+    font-size: clamp(15px, 2.8vmin, 19px); font-weight: bold; cursor: pointer;
+    background: #fff; color: #5b7a99; box-shadow: 0 4px 10px rgba(0,0,0,.08); transition: transform .15s;
+  }
+  .actBtn:active { transform: scale(.93); }
+  #hintBtn { background: #a8e6cf; color: #1d6a48; }
+
+  /* 胜利庆祝 */
+  #celebrate {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.55); backdrop-filter: blur(3px); z-index: 50; flex-direction: column;
+  }
+  #celebrate.show { display: flex; }
+  #celebrate .card {
+    background: #fff; border-radius: 28px; padding: 30px 46px; text-align: center;
+    box-shadow: 0 20px 60px rgba(120,90,160,.3); animation: dropIn .5s cubic-bezier(.2,1.6,.4,1);
+  }
+  #celebrate .stars { font-size: clamp(40px, 9vmin, 64px); }
+  #celebrate h2 { color: #ff6f91; font-size: clamp(24px, 5vmin, 36px); margin: 8px 0 16px; }
+  #celebrate .actBtn { background: #ffd166; color: #7a4b00; }
+  .confetti {
+    position: fixed; top: -20px; width: 12px; height: 12px; border-radius: 3px;
+    animation: fall linear forwards; z-index: 40; pointer-events: none;
+  }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: .7; } }
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="zoo">🧩</span> 小动物数独乐园 <span class="zoo">🐾</span></h1>
+  <div id="levelBar">
+    <button class="lvBtn active" data-lv="0">🐣 入门 3×3</button>
+    <button class="lvBtn" data-lv="1">🐥 进阶 4×4</button>
+    <button class="lvBtn" data-lv="2">🐯 挑战 4×4</button>
+  </div>
+  <div id="hintText">选一个小动物，点格子放进去；每行每列都不能重复哦！</div>
+</header>
+
+<div id="boardWrap"><div id="board"></div></div>
+
+<div id="tray"></div>
+<div id="btnBar">
+  <button class="actBtn" id="hintBtn">💡 帮帮我</button>
+  <button class="actBtn" id="clearBtn">↩️ 拿回去</button>
+  <button class="actBtn" id="newBtn">🔄 换一题</button>
+</div>
+
+<div id="celebrate">
+  <div class="card">
+    <div class="stars">🌟🎉🌟</div>
+    <h2>你真棒！全部答对啦！</h2>
+    <button class="actBtn" id="againBtn">再玩一题 🎈</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ---------- 素材（Twemoji，CC-BY 4.0，已下载到本地 assets/）----------
+const ANIMALS = [
+  { code: "1f430", name: "兔兔" },
+  { code: "1f43b", name: "熊熊" },
+  { code: "1f438", name: "青蛙" },
+  { code: "1f43c", name: "熊猫" },
+  { code: "1f431", name: "小猫" },
+  { code: "1f425", name: "小鸡" },
+];
+const img = (code) => "assets/" + code + ".svg";
+
+const LEVELS = [
+  { size: 3, blanks: 4,  label: "入门 3×3" },
+  { size: 4, blanks: 7,  label: "进阶 4×4" },
+  { size: 4, blanks: 10, label: "挑战 4×4" },
+];
+
+// ---------- 状态 ----------
+let level = 0;
+let solution = [];   // 答案
+let fixed = [];      // 固定格 true
+let board = [];      // 当前放的是什么（-1 空）
+let picked = -1;     // 当前选中的动物
+let cellEls = [];
+
+const $ = (s) => document.querySelector(s);
+const boardEl = $("#board"), trayEl = $("#tray"), hintText = $("#hintText");
+
+// ---------- 出题：生成拉丁方，再挖空 ----------
+function makePuzzle(size, blanks) {
+  // 基础拉丁方
+  let sq = Array.from({ length: size }, (_, i) =>
+    Array.from({ length: size }, (_, j) => (i + j) % size));
+  // 随机化：行、列、动物映射
+  const rows = shuffle([...Array(size).keys()]);
+  const cols = shuffle([...Array(size).keys()]);
+  const map  = shuffle([...Array(size).keys()]);
+  sq = rows.map(r => cols.map(c => map[sq[r][c]]));
+
+  // 挖空
+  const all = shuffle([...Array(size * size).keys()]);
+  const holeSet = new Set(all.slice(0, blanks));
+  const fixedMap = Array.from({ length: size * size }, (_, i) => !holeSet.has(i));
+  return { solution: sq, fixedMap };
+}
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ---------- 渲染 ----------
+function render() {
+  const { size, blanks } = LEVELS[level];
+  const p = makePuzzle(size, blanks);
+  solution = p.solution;
+  fixed = p.fixedMap;
+  board = Array.from({ length: size * size }, (_, i) => fixed[i] ? solution[Math.floor(i / size)][i % size] : -1);
+  picked = -1;
+
+  hintText.textContent = "选一个小动物，点格子放进去；每行每列都不能重复哦！";
+  hintText.className = "";
+
+  // 棋盘
+  const cellPx = size === 3 ? "clamp(72px, 17vmin, 118px)" : "clamp(58px, 13.5vmin, 96px)";
+  boardEl.style.gridTemplateColumns = `repeat(${size}, ${cellPx})`;
+  boardEl.innerHTML = "";
+  cellEls = [];
+  for (let i = 0; i < size * size; i++) {
+    const d = document.createElement("div");
+    d.className = "cell" + (fixed[i] ? " fixed" : "");
+    if (fixed[i]) d.appendChild(makeAnimalImg(board[i]));
+    d.addEventListener("click", () => onCellClick(i));
+    boardEl.appendChild(d);
+    cellEls.push(d);
+  }
+
+  // 动物托盘
+  trayEl.innerHTML = "";
+  for (let a = 0; a < size; a++) {
+    const t = document.createElement("div");
+    t.className = "trayItem";
+    t.dataset.animal = a;
+    const im = document.createElement("img");
+    im.src = img(ANIMALS[a].code); im.alt = ANIMALS[a].name;
+    const nm = document.createElement("span");
+    nm.textContent = ANIMALS[a].name;
+    t.appendChild(im); t.appendChild(nm);
+    t.addEventListener("click", () => pickAnimal(a));
+    trayEl.appendChild(t);
+  }
+  updateTray();
+}
+
+function makeAnimalImg(a) {
+  const im = document.createElement("img");
+  im.src = img(ANIMALS[a].code); im.alt = ANIMALS[a].name; im.draggable = false;
+  return im;
+}
+
+function pickAnimal(a) {
+  picked = (picked === a) ? -1 : a;
+  updateTray();
+  document.querySelectorAll(".cell").forEach(c => c.classList.remove("selected-target"));
+  if (picked >= 0) {
+    cellEls.forEach((c, i) => { if (!fixed[i] && board[i] === -1) c.classList.add("selected-target"); });
+    setHint(`已选好「${ANIMALS[picked].name}」，点一个空格子放进去吧！`);
+  }
+}
+
+function updateTray() {
+  const { size } = LEVELS[level];
+  const counts = Array(size).fill(0);
+  board.forEach(v => { if (v >= 0) counts[v]++; });
+  const need = LEVELS[level].size; // 每种动物需要 size 个
+  trayEl.querySelectorAll(".trayItem").forEach(t => {
+    const a = +t.dataset.animal;
+    t.classList.toggle("pick", a === picked);
+    t.classList.toggle("empty", counts[a] >= need);
+    let b = t.querySelector(".badge");
+    if (!b) { b = document.createElement("div"); b.className = "badge"; t.appendChild(b); }
+    b.textContent = Math.max(0, need - counts[a]);
+    b.style.display = counts[a] >= need ? "none" : "block";
+  });
+}
+
+// ---------- 交互 ----------
+function onCellClick(i) {
+  if (fixed[i]) { say("这是题目里本来就有的小动物，动不了哦～", "warn"); return; }
+
+  // 点已有的玩家动物 → 拿回去
+  if (board[i] >= 0 && picked === -1) {
+    board[i] = -1;
+    cellEls[i].innerHTML = "";
+    updateTray();
+    say("拿回去了，换一个试试！");
+    playTone(300, .12, "triangle");
+    return;
+  }
+
+  if (picked === -1) { say("先在下面选一个小动物吧！", "warn"); return; }
+  if (board[i] >= 0) { say("这里已经有一只啦，先点它把它拿回去～", "warn"); return; }
+
+  // 冲突检查：行 / 列
+  const { size } = LEVELS[level];
+  const r = Math.floor(i / size), c = i % size;
+  for (let k = 0; k < size; k++) {
+    if (board[r * size + k] === picked && k !== c) return reject(i, `这一行已经有「${ANIMALS[picked].name}」啦，换一个试试！`, r, c, true);
+    if (board[k * size + c] === picked && k !== r) return reject(i, `这一列已经有「${ANIMALS[picked].name}」啦，换一个试试！`, r, c, false);
+  }
+
+  // 放置成功
+  board[i] = picked;
+  cellEls[i].innerHTML = "";
+  cellEls[i].appendChild(makeAnimalImg(picked));
+  cellEls[i].classList.add("justPlaced");
+  setTimeout(() => cellEls[i] && cellEls[i].classList.remove("justPlaced"), 320);
+  playTone(660, .1, "sine"); setTimeout(() => playTone(880, .12, "sine"), 90);
+  say(`放好啦！${ANIMALS[picked].name}真可爱～`);
+  updateTray();
+  checkWin();
+}
+
+function reject(i, msg, r, c, isRow) {
+  cellEls[i].classList.add("shake");
+  setTimeout(() => cellEls[i] && cellEls[i].classList.remove("shake"), 400);
+  // 高亮冲突的那个
+  const { size } = LEVELS[level];
+  for (let k = 0; k < size; k++) {
+    const j = isRow ? r * size + k : k * size + c;
+    if (board[j] === board[j] && board[j] >= 0 && board[j] === picked) {
+      cellEls[j].classList.add("shake");
+      setTimeout(() => cellEls[j] && cellEls[j].classList.remove("shake"), 400);
+    }
+  }
+  playTone(180, .2, "square");
+  say(msg, "warn");
+}
+
+function say(msg, cls) {
+  hintText.textContent = msg;
+  hintText.className = cls || "";
+}
+
+function checkWin() {
+  if (board.some(v => v < 0)) return;
+  // 全填满 + 放置时已拦截冲突 → 必定正确
+  playWinSound();
+  celebrate();
+}
+
+// ---------- 帮助 ----------
+$("#hintBtn").addEventListener("click", () => {
+  const { size } = LEVELS[level];
+  const empties = board.map((v, i) => v < 0 ? i : -1).filter(i => i >= 0);
+  if (!empties.length) { say("都填完啦，好厉害！", "good"); return; }
+  const i = empties[Math.floor(Math.random() * empties.length)];
+  const ans = solution[Math.floor(i / size)][i % size];
+  board[i] = ans;
+  cellEls[i].innerHTML = "";
+  cellEls[i].appendChild(makeAnimalImg(ans));
+  cellEls[i].classList.add("hinted");
+  setTimeout(() => cellEls[i] && cellEls[i].classList.remove("hinted"), 1200);
+  playTone(660, .1, "sine"); setTimeout(() => playTone(990, .12, "sine"), 90);
+  say(`看！这里应该放「${ANIMALS[ans].name}」～`);
+  updateTray();
+  checkWin();
+});
+
+$("#clearBtn").addEventListener("click", () => {
+  board = board.map((v, i) => fixed[i] ? v : -1);
+  cellEls.forEach((c, i) => { if (!fixed[i]) c.innerHTML = ""; });
+  picked = -1; updateTray();
+  say("都拿回去了，重新开始！");
+  playTone(330, .15, "triangle");
+});
+
+$("#newBtn").addEventListener("click", () => { render(); playTone(520, .12, "sine"); });
+$("#againBtn").addEventListener("click", () => {
+  $("#celebrate").classList.remove("show");
+  render();
+});
+
+// ---------- 关卡 ----------
+document.querySelectorAll(".lvBtn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".lvBtn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    level = +btn.dataset.lv;
+    render();
+    playTone(520, .12, "sine");
+  });
+});
+
+// ---------- 音效（WebAudio，无外部音频文件）----------
+let AC;
+function playTone(freq, dur, type) {
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === "suspended") AC.resume();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(.18, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, AC.currentTime + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + dur);
+  } catch (e) {}
+}
+function playWinSound() {
+  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, .28, "sine"), i * 130));
+}
+
+// ---------- 庆祝 ----------
+function celebrate() {
+  $("#celebrate").classList.add("show");
+  const colors = ["#ff6f91", "#ffd166", "#a8e6cf", "#7fd8ff", "#c9a7ff"];
+  for (let i = 0; i < 60; i++) {
+    const p = document.createElement("div");
+    p.className = "confetti";
+    p.style.left = Math.random() * 100 + "vw";
+    p.style.background = colors[i % colors.length];
+    p.style.animationDuration = (1.6 + Math.random() * 1.6) + "s";
+    p.style.animationDelay = Math.random() * .5 + "s";
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 3800);
+  }
+}
+
+render();
+</script>
+</body>
+</html>
