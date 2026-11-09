@@ -2,17 +2,34 @@
 
 一个仓库放多个游戏，**一个游戏一条分支**，`main` 只做游戏入口页。
 
+## 在线玩
+
+**https://hadeswing.github.io/games/**
+
+不用下载。门厅页点卡片即可，手机横屏或电脑打开体验最好。
+
 ## 分支一览
 
-| 分支 | 游戏 | 形态 |
-|------|------|------|
-| `earth` | 🌍 小小地球（3D 卡通地球仪） | Vite 单文件构建 |
-| `kids-sudoku` | 🧩 小动物数独乐园 | 静态单文件 HTML |
-| `visual-detective` | 🔍 视觉小侦探（原型） | 静态 HTML |
+| 分支 | 游戏 | 形态 | 线上路径 |
+|------|------|------|----------|
+| `earth` | 🌍 小小地球（3D 卡通地球仪） | Vite 单文件构建 | `/earth/` |
+| `kids-sudoku` | 🧩 小动物数独乐园 | 静态 HTML | `/kids-sudoku/` |
+| `visual-detective` | 🔍 视觉小侦探（原型） | 静态 HTML | `/visual-detective/` |
+
+## 自动发布
+
+`.github/workflows/deploy.yml`（在 `main` 分支）负责把各游戏分支聚合成一个站点：
+
+1. 依次 checkout `main` / `earth` / `kids-sudoku` / `visual-detective`；
+2. `earth` 跑 `npm ci && npm run build` 出单文件产物，其余直接拷贝 HTML；
+3. 组装成 `_site/index.html`（门厅）+ `_site/<游戏>/index.html`，上传到 GitHub Pages。
+
+改门厅页推送到 `main` 会自动发布；只改了某个游戏分支时，去 Actions 页面手动点一次 **Run workflow** 即可（或以后给各分支也加上 push 触发）。
 
 ## 分支约定
 
 1. **每个游戏独占一条分支，根目录只放这个游戏自己的文件**，不放其他游戏的代码。
-2. **`main` 不放任何游戏代码**，只有 `index.html`（游戏门厅）和本 README。
+2. **`main` 不放任何游戏代码**，只有门厅 `index.html`、本 README 和发布 workflow。
 3. 新游戏开工：`git switch --orphan <分支名>`（全新分支）或从 `main` 切出后清空，再放代码。
 4. 静态游戏直接双击 HTML 就能玩；Vite 项目 `npm install && npm run dev` 开发、`npm run build` 出单文件。
+5. 新游戏上线：在 `deploy.yml` 里加一段 checkout + 拷贝，并在门厅页加一张卡片。

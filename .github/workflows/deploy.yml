@@ -1,0 +1,97 @@
+name: Deploy games
+
+# 每次改动门厅页就重新发布；也可以在 Actions 页面手动点运行
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取门厅页（main）
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: src/main
+
+      - name: 取小小地球（earth）
+        uses: actions/checkout@v4
+        with:
+          ref: earth
+          path: src/earth
+
+      - name: 取小动物数独（kids-sudoku）
+        uses: actions/checkout@v4
+        with:
+          ref: kids-sudoku
+          path: src/kids-sudoku
+
+      - name: 取视觉小侦探（visual-detective）
+        uses: actions/checkout@v4
+        with:
+          ref: visual-detective
+          path: src/visual-detective
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: src/earth/package-lock.json
+
+      - name: 构建小小地球（单文件产物）
+        working-directory: src/earth
+        run: |
+          npm ci
+          npm run build
+
+      - name: 组装站点
+        run: |
+          set -e
+          mkdir -p _site/earth _site/kids-sudoku _site/visual-detective
+          cp src/main/index.html _site/index.html
+          touch _site/.nojekyll
+          cp src/earth/dist/index.html _site/earth/index.html
+
+          # 数独分支早期版本是"earth 根目录 + kids-sudoku/ 子目录"，这里兼容两种布局
+          if [ -f "src/kids-sudoku/kids-sudoku/小动物数独乐园.html" ]; then
+            SUDOKU="src/kids-sudoku/kids-sudoku"
+          else
+            SUDOKU="src/kids-sudoku"
+          fi
+          cp "$SUDOKU/小动物数独乐园.html" _site/kids-sudoku/index.html
+          if [ -d "$SUDOKU/assets" ]; then cp -r "$SUDOKU/assets" _site/kids-sudoku/assets; fi
+
+          VD=$(find src/visual-detective -maxdepth 1 -name "*.html" | head -1)
+          cp "$VD" _site/visual-detective/index.html
+
+          echo "--- 站点内容 ---"
+          find _site -type f -printf '%8k KB  %p\n' | sort -k3
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
