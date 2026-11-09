@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<title>小动物数独乐园 v12</title>
+<title>小动物数独乐园 v13</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { min-height: 100%; overflow-x: hidden; }
@@ -109,6 +109,20 @@
   }
   .cell.justPlaced { animation: dropIn .3s cubic-bezier(.2,1.6,.4,1); }
   .cell.hinted { box-shadow: inset 0 0 0 4px #ffd166; }
+  /* 右键/长按：棋盘上所有已放的小动物一起闪烁，方便数个数 */
+  .cell.flashAll { animation: flashPulse .55s ease-in-out 3; z-index: 2; }
+  @keyframes flashPulse {
+    0%, 100% { box-shadow: inset 0 0 0 0 rgba(255,183,3,0); transform: scale(1); }
+    50%      { box-shadow: inset 0 0 0 7px #ffb703; transform: scale(1.07); background: #fff6d9; }
+  }
+  /* 划线提示：选中动物后，同行同列的空格打叉 */
+  .cell.crossed { background: #fff1f3; }
+  .cell.crossed::before, .cell.crossed::after {
+    content: ""; position: absolute; left: 22%; top: 46%; width: 56%; height: 9%;
+    border-radius: 6px; background: rgba(240,110,120,.55); pointer-events: none;
+  }
+  .cell.crossed::before { transform: rotate(45deg); }
+  .cell.crossed::after  { transform: rotate(-45deg); }
   @keyframes dropIn { 0% { transform: scale(.2) rotate(-15deg); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
   @keyframes shake { 0%,100% { transform: translateX(0);} 20% { transform: translateX(-7px);} 40% { transform: translateX(7px);} 60% { transform: translateX(-5px);} 80% { transform: translateX(5px);} }
   @keyframes pop { 0% { transform: scale(.85);} 60% { transform: scale(1.08);} 100% { transform: scale(1);} }
@@ -141,6 +155,8 @@
   }
   .actBtn:active { transform: scale(.93); }
   #soundBtn { background: #ffe3ec; color: #c2426a; min-width: 4.5em; }
+  #markBtn { background: #eef2ff; color: #4a5fa8; }
+  #markBtn.on { background: #d8f3ff; color: #0a6e91; box-shadow: 0 0 0 2px #7fd8ff inset; }
 
   /* 胜利庆祝 */
   #celebrate {
@@ -223,7 +239,7 @@
     <span id="percentText">0%</span>
     <span id="scorePill">得分 100</span>
   </div>
-  <div id="totalText">总进度 0/172 · v12</div>
+  <div id="totalText">总进度 0/172 · v13</div>
   <div id="hintText">选一个小动物，点格子放进去；每行每列都不能重复哦！</div>
   <div id="clueBox"></div>
 </header>
@@ -233,6 +249,7 @@
 <div id="tray"></div>
 <div id="btnBar">
   <button class="actBtn" id="soundBtn">🔊 声音</button>
+  <button class="actBtn" id="markBtn">✗ 划线：关</button>
   <button class="actBtn" id="legendBtn">❓ 玩法</button>
   <button class="actBtn" id="statsBtn">📊 我的</button>
   <button class="actBtn" id="clearBtn">↩️ 拿回去</button>
@@ -354,6 +371,9 @@ let board = [];       // 当前放的是什么（-1 空）
 let picked = -1;
 let cellEls = [];
 let soundOn = true;
+let markHint = false;   // 划线提示开关：选中动物后同行同列空格打叉
+let suppressClick = false; // 长按闪烁后吞掉本次点击，避免误放
+let flashTimer = 0;
 let trayIds = []; // 线索模式：本题要放的全局动物 id
 let fillTray = []; // 填空模式：本题托盘里出现的动物 id
 let justWon = false; // 本题已通关（回看棋盘时锁定棋盘）
@@ -676,6 +696,7 @@ function render(pIdx) {
     d.className = "cell" + (fixed[i] ? " fixed" : "");
     if (fixed[i]) d.appendChild(makeAnimalImg(board[i]));
     d.addEventListener("click", () => onCellClick(i));
+    bindFlashGesture(d);
     boardEl.appendChild(d);
     cellEls.push(d);
   }
@@ -693,6 +714,7 @@ function render(pIdx) {
     nm.textContent = ANIMALS[a].name;
     t.appendChild(im); t.appendChild(nm);
     t.addEventListener("click", () => pickAnimal(a));
+    bindFlashGesture(t);
     trayEl.appendChild(t);
   }
   updateTray();
@@ -708,7 +730,7 @@ function updateStats() {
   $("#barInner").style.width = pct + "%";
   $("#percentText").textContent = pct + "%";
   $("#scorePill").textContent = `本题 ${currentScore} 分`;
-  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${Object.keys(LEVELS).filter(i => levelDone(+i) >= LEVELS[i].total).length} 个关卡 · v12`;
+  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${Object.keys(LEVELS).filter(i => levelDone(+i) >= LEVELS[i].total).length} 个关卡 · v13`;
   // 关卡按钮小字
   document.querySelectorAll(".lvBtn").forEach((b, i) => {
     const s = b.querySelector("small");
@@ -878,10 +900,57 @@ function updateTray() {
     picked = -1;
     cellEls.forEach(c => c.classList.remove("selected-target"));
   }
+  updateMarks();
+}
+
+// 划线提示：选中的动物，在同行/同列的空格里打叉（仅填空模式有意义）
+function updateMarks() {
+  if (!cellEls.length) return;
+  cellEls.forEach(el => el.classList.remove("crossed"));
+  if (!markHint || mode !== "fill" || picked < 0) return;
+  const L = LEVELS[level];
+  const bad = new Set();
+  for (let i = 0; i < board.length; i++) {
+    if (board[i] !== picked) continue;
+    const r = Math.floor(i / L.size), c = i % L.size;
+    for (let k = 0; k < L.size; k++) { bad.add(r * L.size + k); bad.add(k * L.size + c); }
+  }
+  bad.forEach(i => {
+    if (!fixed[i] && board[i] === -1) cellEls[i].classList.add("crossed");
+  });
 }
 
 // ================= 交互 =================
+// 右键（PC）/ 长按（手机）任一动物：棋盘上已填的动物全部闪烁一下，方便数数量
+function flashPlaced() {
+  const onBoard = [];
+  cellEls.forEach((el, i) => { if (board[i] >= 0) onBoard.push(el); });
+  onBoard.forEach(el => { el.classList.remove("flashAll"); void el.offsetWidth; el.classList.add("flashAll"); });
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => onBoard.forEach(el => el.classList.remove("flashAll")), 1800);
+  const mine = board.filter((v, i) => v >= 0 && !fixed[i]).length;
+  setHint(`棋盘上已经有 ${onBoard.length} 只小动物，其中你放了 ${mine} 只～`, "good");
+  playTone(780, .1, "sine");
+}
+function bindFlashGesture(el) {
+  el.addEventListener("contextmenu", e => { e.preventDefault(); flashPlaced(); });
+  let timer = null;
+  const start = () => {
+    timer = setTimeout(() => {
+      timer = null; suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 800);
+      flashPlaced();
+    }, 550);
+  };
+  const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+  el.addEventListener("touchstart", start, { passive: true });
+  el.addEventListener("touchend", cancel);
+  el.addEventListener("touchmove", cancel);
+  el.addEventListener("touchcancel", cancel);
+}
+
 function pickAnimal(a) {
+  if (suppressClick) return;
   // 线索模式：这只动物已经放好了，不能再选（防止重复放导致死局）
   if (mode === "clue" && board.indexOf(a) >= 0) {
     picked = -1;
@@ -902,6 +971,7 @@ function pickAnimal(a) {
 }
 
 function onCellClick(i) {
+  if (suppressClick) return;
   if (justWon) { const m = "这题已经通关啦！点「换一题」继续吧～"; setHint(m, "good"); speak(m); return; }
   if (fixed[i]) {
     const m = board[i] < 0
@@ -1027,6 +1097,28 @@ $("#soundBtn").addEventListener("click", () => {
   if (!soundOn) { stopSpeak(); }
   else { playTone(660, .12, "sine"); speak("声音打开啦"); }
 });
+
+// 划线提示开关：选中动物后，同行同列的空格打叉
+try { markHint = localStorage.getItem("kidsudoku_marks_v1") === "1"; } catch (e) {}
+function syncMarkBtn() {
+  const b = $("#markBtn");
+  if (!b) return;
+  b.textContent = markHint ? "✗ 划线：开" : "✗ 划线：关";
+  b.classList.toggle("on", markHint);
+}
+$("#markBtn").addEventListener("click", () => {
+  markHint = !markHint;
+  try { localStorage.setItem("kidsudoku_marks_v1", markHint ? "1" : "0"); } catch (e) {}
+  syncMarkBtn();
+  updateMarks();
+  playTone(markHint ? 720 : 420, .1, "sine");
+  const m = markHint
+    ? "划线提示打开啦：选了动物，同行同列的空格会打叉～"
+    : "划线提示关掉了";
+  setHint(m, "good");
+  speak(markHint ? "划线提示打开了，同行同列会打叉" : "划线提示关掉了");
+});
+syncMarkBtn();
 
 // ================= 📊 我的：进度统计 =================
 function buildStats() {
