@@ -6,7 +6,7 @@
 <title>小动物数独乐园</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; overflow: hidden; }
+  html, body { height: 100%; overflow-x: hidden; overflow-y: auto; }
   body {
     font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
     background: linear-gradient(180deg, #ffe9f2 0%, #fff7e0 55%, #e0f7ff 100%);
@@ -15,28 +15,44 @@
   }
   header { text-align: center; margin-top: 10px; }
   h1 {
-    font-size: clamp(26px, 5.5vmin, 40px); color: #ff6f91; letter-spacing: 2px;
+    font-size: clamp(24px, 5vmin, 38px); color: #ff6f91; letter-spacing: 2px;
     text-shadow: 0 3px 0 #fff, 0 5px 12px rgba(255,111,145,.25);
   }
   h1 .zoo { font-size: .9em; }
-  #levelBar { display: flex; gap: 10px; margin-top: 8px; }
+  #levelBar { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
   .lvBtn {
-    border: none; border-radius: 999px; padding: 8px 18px;
-    font-size: clamp(14px, 2.6vmin, 18px); font-weight: bold; cursor: pointer;
+    border: none; border-radius: 999px; padding: 8px 16px;
+    font-size: clamp(13px, 2.4vmin, 17px); font-weight: bold; cursor: pointer;
     background: #fff; color: #9aa3b2; box-shadow: 0 3px 8px rgba(0,0,0,.08);
     transition: all .2s;
   }
   .lvBtn.active { background: #ffd166; color: #7a4b00; transform: scale(1.08); box-shadow: 0 4px 12px rgba(255,209,102,.5); }
   #hintText {
-    margin-top: 8px; min-height: 1.6em; font-size: clamp(15px, 3vmin, 21px);
+    margin-top: 8px; min-height: 1.6em; font-size: clamp(15px, 2.8vmin, 20px);
     color: #5b7a99; font-weight: bold; text-align: center; padding: 0 12px;
   }
   #hintText.warn { color: #ff5470; animation: pop .3s; }
   #hintText.good { color: #2fb379; animation: pop .3s; }
 
+  /* 线索卡 */
+  #clueBox { display: none; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 6px 12px 0; max-width: 640px; }
+  .clueCard {
+    display: flex; align-items: center; gap: 6px; background: #fff;
+    border-radius: 14px; padding: 6px 12px; cursor: pointer;
+    box-shadow: 0 3px 8px rgba(0,0,0,.08); border: 3px solid #e4e8f0;
+    font-size: clamp(13px, 2.4vmin, 17px); font-weight: bold; color: #6b7a8f;
+    transition: all .2s;
+  }
+  .clueCard img { width: clamp(26px, 4.5vmin, 36px); height: clamp(26px, 4.5vmin, 36px); }
+  .clueCard.ok { border-color: #7cd992; background: #eafff0; }
+  .clueCard.ok::after { content: "✓"; color: #2fb379; font-size: 1.2em; margin-left: 2px; }
+  .clueCard.bad { border-color: #ff8fa0; background: #fff0f2; animation: shake .4s; }
+  .clueCard.bad::after { content: "✗"; color: #ff5470; font-size: 1.2em; margin-left: 2px; }
+  .clueCard:active { transform: scale(.95); }
+
   #boardWrap {
     flex: 1; display: flex; align-items: center; justify-content: center; width: 100%;
-    position: relative;
+    position: relative; min-height: 0;
   }
   #board {
     display: grid; gap: clamp(4px, 1vmin, 10px);
@@ -53,7 +69,6 @@
   .cell.fixed:hover { transform: none; }
   .cell.selected-target { background: #d8f3ff; box-shadow: inset 0 0 0 3px #7fd8ff; }
   .cell img { width: 78%; height: 78%; pointer-events: none; }
-  .cell.fixed img { opacity: .95; }
   .cell.shake { animation: shake .35s; background: #ffe0e6; }
   .cell.justPlaced { animation: dropIn .3s cubic-bezier(.2,1.6,.4,1); }
   .cell.hinted { box-shadow: inset 0 0 0 4px #ffd166; }
@@ -62,7 +77,7 @@
   @keyframes pop { 0% { transform: scale(.85);} 60% { transform: scale(1.08);} 100% { transform: scale(1);} }
 
   #tray {
-    display: flex; gap: clamp(8px, 1.8vmin, 18px); margin-bottom: 12px;
+    display: flex; gap: clamp(8px, 1.8vmin, 18px); margin: 10px 0 8px;
     background: #fff; padding: clamp(8px, 1.6vmin, 14px) clamp(12px, 2.5vmin, 24px);
     border-radius: 999px; box-shadow: 0 8px 24px rgba(120, 90, 160, .15);
   }
@@ -81,14 +96,15 @@
     border-radius: 999px; text-align: center; padding: 0 3px; font-weight: bold;
   }
 
-  #btnBar { display: flex; gap: 14px; margin-bottom: 12px; }
+  #btnBar { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; }
   .actBtn {
-    border: none; border-radius: 999px; padding: 10px 22px;
-    font-size: clamp(15px, 2.8vmin, 19px); font-weight: bold; cursor: pointer;
+    border: none; border-radius: 999px; padding: 10px 20px;
+    font-size: clamp(14px, 2.6vmin, 18px); font-weight: bold; cursor: pointer;
     background: #fff; color: #5b7a99; box-shadow: 0 4px 10px rgba(0,0,0,.08); transition: transform .15s;
   }
   .actBtn:active { transform: scale(.93); }
   #hintBtn { background: #a8e6cf; color: #1d6a48; }
+  #soundBtn { background: #ffe3ec; color: #c2426a; min-width: 4.5em; }
 
   /* 胜利庆祝 */
   #celebrate {
@@ -115,16 +131,20 @@
   <h1><span class="zoo">🧩</span> 小动物数独乐园 <span class="zoo">🐾</span></h1>
   <div id="levelBar">
     <button class="lvBtn active" data-lv="0">🐣 入门 3×3</button>
-    <button class="lvBtn" data-lv="1">🐥 进阶 4×4</button>
-    <button class="lvBtn" data-lv="2">🐯 挑战 4×4</button>
+    <button class="lvBtn" data-lv="1">🔍 小侦探 3×3</button>
+    <button class="lvBtn" data-lv="2">🐥 进阶 4×4</button>
+    <button class="lvBtn" data-lv="3">🐯 挑战 4×4</button>
+    <button class="lvBtn" data-lv="4">🕵️ 大侦探 4×4</button>
   </div>
   <div id="hintText">选一个小动物，点格子放进去；每行每列都不能重复哦！</div>
+  <div id="clueBox"></div>
 </header>
 
 <div id="boardWrap"><div id="board"></div></div>
 
 <div id="tray"></div>
 <div id="btnBar">
+  <button class="actBtn" id="soundBtn">🔊 声音</button>
   <button class="actBtn" id="hintBtn">💡 帮帮我</button>
   <button class="actBtn" id="clearBtn">↩️ 拿回去</button>
   <button class="actBtn" id="newBtn">🔄 换一题</button>
@@ -152,40 +172,30 @@ const ANIMALS = [
 ];
 const img = (code) => "assets/" + code + ".svg";
 
+// mode: "fill"=填空数独  "clue"=方位线索推理
 const LEVELS = [
-  { size: 3, blanks: 4,  label: "入门 3×3" },
-  { size: 4, blanks: 7,  label: "进阶 4×4" },
-  { size: 4, blanks: 10, label: "挑战 4×4" },
+  { size: 3, blanks: 4,  mode: "fill", label: "入门 3×3" },
+  { size: 3, mode: "clue", label: "小侦探 3×3" },
+  { size: 4, blanks: 7,  mode: "fill", label: "进阶 4×4" },
+  { size: 4, blanks: 10, mode: "fill", label: "挑战 4×4" },
+  { size: 4, mode: "clue", label: "大侦探 4×4" },
 ];
 
 // ---------- 状态 ----------
 let level = 0;
-let solution = [];   // 答案
-let fixed = [];      // 固定格 true
-let board = [];      // 当前放的是什么（-1 空）
-let picked = -1;     // 当前选中的动物
+let mode = "fill";
+let solution = [];    // fill 模式答案矩阵
+let solutionPos = []; // clue 模式答案：pos[a] = {r, c}
+let clues = [];       // clue 模式线索列表
+let fixed = [];
+let board = [];       // 当前放的是什么（-1 空）
+let picked = -1;
 let cellEls = [];
+let soundOn = true;
 
 const $ = (s) => document.querySelector(s);
-const boardEl = $("#board"), trayEl = $("#tray"), hintText = $("#hintText");
+const boardEl = $("#board"), trayEl = $("#tray"), hintText = $("#hintText"), clueBox = $("#clueBox");
 
-// ---------- 出题：生成拉丁方，再挖空 ----------
-function makePuzzle(size, blanks) {
-  // 基础拉丁方
-  let sq = Array.from({ length: size }, (_, i) =>
-    Array.from({ length: size }, (_, j) => (i + j) % size));
-  // 随机化：行、列、动物映射
-  const rows = shuffle([...Array(size).keys()]);
-  const cols = shuffle([...Array(size).keys()]);
-  const map  = shuffle([...Array(size).keys()]);
-  sq = rows.map(r => cols.map(c => map[sq[r][c]]));
-
-  // 挖空
-  const all = shuffle([...Array(size * size).keys()]);
-  const holeSet = new Set(all.slice(0, blanks));
-  const fixedMap = Array.from({ length: size * size }, (_, i) => !holeSet.has(i));
-  return { solution: sq, fixedMap };
-}
 function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -194,24 +204,150 @@ function shuffle(a) {
   return a;
 }
 
-// ---------- 渲染 ----------
-function render() {
-  const { size, blanks } = LEVELS[level];
-  const p = makePuzzle(size, blanks);
-  solution = p.solution;
-  fixed = p.fixedMap;
-  board = Array.from({ length: size * size }, (_, i) => fixed[i] ? solution[Math.floor(i / size)][i % size] : -1);
-  picked = -1;
+// ================= 出题：填空数独 =================
+function makeFillPuzzle(size, blanks) {
+  let sq = Array.from({ length: size }, (_, i) =>
+    Array.from({ length: size }, (_, j) => (i + j) % size));
+  const rows = shuffle([...Array(size).keys()]);
+  const cols = shuffle([...Array(size).keys()]);
+  const map  = shuffle([...Array(size).keys()]);
+  sq = rows.map(r => cols.map(c => map[sq[r][c]]));
+  const all = shuffle([...Array(size * size).keys()]);
+  const holeSet = new Set(all.slice(0, blanks));
+  const fixedMap = Array.from({ length: size * size }, (_, i) => !holeSet.has(i));
+  return { solution: sq, fixedMap };
+}
 
-  hintText.textContent = "选一个小动物，点格子放进去；每行每列都不能重复哦！";
-  hintText.className = "";
+// ================= 出题：方位线索（唯一解校验）=================
+// 一个摆放 = 每只动物占一格，行不重复、列不重复
+function allPlacements(size) {
+  const perms = (arr) => {
+    if (arr.length <= 1) return [arr];
+    const out = [];
+    arr.forEach((x, i) => perms(arr.filter((_, j) => j !== i)).forEach(p => out.push([x, ...p])));
+    return out;
+  };
+  const rowPerms = perms([...Array(size).keys()]);
+  const colPerms = perms([...Array(size).keys()]);
+  const list = [];
+  for (const R of rowPerms) for (const C of colPerms) {
+    const pos = []; // pos[a] = {r, c}
+    for (let a = 0; a < size; a++) pos[a] = { r: R[a], c: C[a] };
+    list.push(pos);
+  }
+  return list;
+}
+
+// 线索类型（kind=pair 需要 A、B 两只动物；kind=single 只看 A 一只）
+// 注意：每只动物独占一行一列，所以"左边/上面"指列/行方向更靠，不需要同一排
+function makeClueTypes(size) {
+  const last = size - 1;
+  return [
+    { id: "left",     kind: "pair",   test: (A, B) => A.c < B.c, label: "在…的左边" },
+    { id: "right",    kind: "pair",   test: (A, B) => A.c > B.c, label: "在…的右边" },
+    { id: "above",    kind: "pair",   test: (A, B) => A.r < B.r, label: "在…的上面" },
+    { id: "below",    kind: "pair",   test: (A, B) => A.r > B.r, label: "在…的下面" },
+    { id: "adjacent", kind: "pair",   test: (A, B) => Math.abs(A.r - B.r) + Math.abs(A.c - B.c) === 1, label: "和…紧挨着" },
+    { id: "diagonal", kind: "pair",   test: (A, B) => Math.abs(A.r - B.r) === 1 && Math.abs(A.c - B.c) === 1, label: "和…斜着挨着" },
+    { id: "corner",   kind: "single", test: (A) => (A.r === 0 || A.r === last) && (A.c === 0 || A.c === last), label: "坐在角落里" },
+    { id: "top",      kind: "single", test: (A) => A.r === 0,      label: "坐在最上面一排" },
+    { id: "bottom",   kind: "single", test: (A) => A.r === last,   label: "坐在最下面一排" },
+    { id: "leftcol",  kind: "single", test: (A) => A.c === 0,      label: "坐在最左边一列" },
+    { id: "rightcol", kind: "single", test: (A) => A.c === last,   label: "坐在最右边一列" },
+  ];
+}
+
+function clueSatisfied(clue, pos) {
+  return clue.b >= 0
+    ? clue.type.test(pos[clue.a], pos[clue.b])
+    : clue.type.test(pos[clue.a], null);
+}
+function clueSpeech(cl) {
+  const nA = ANIMALS[cl.a].name, nB = cl.b >= 0 ? ANIMALS[cl.b].name : "";
+  switch (cl.type.id) {
+    case "left":     return `${nA}在${nB}的左边`;
+    case "right":    return `${nA}在${nB}的右边`;
+    case "above":    return `${nA}在${nB}的上面`;
+    case "below":    return `${nA}在${nB}的下面`;
+    case "adjacent": return `${nA}和${nB}紧挨着`;
+    case "diagonal": return `${nA}和${nB}斜着挨着`;
+    case "corner":   return `${nA}坐在角落里`;
+    case "top":      return `${nA}坐在最上面一排`;
+    case "bottom":   return `${nA}坐在最下面一排`;
+    case "leftcol":  return `${nA}坐在最左边一列`;
+    case "rightcol": return `${nA}坐在最右边一列`;
+  }
+  return cl.type.label;
+}
+
+function makeCluePuzzle(size) {
+  // 随机一个答案摆放
+  const placements = allPlacements(size);
+  const answer = placements[Math.floor(Math.random() * placements.length)];
+  const types = makeClueTypes(size);
+
+  // 候选线索：所有在答案下成立的线索
+  const candidates = [];
+  for (let a = 0; a < size; a++)
+    for (const t of types.filter(t => t.kind === "single" && t.test(answer[a], null)))
+      candidates.push({ a, b: -1, type: t });
+  for (let a = 0; a < size; a++)
+    for (let b = 0; b < size; b++) {
+      if (a === b) continue;
+      for (const t of types.filter(t => t.kind === "pair" && t.test(answer[a], answer[b])))
+        candidates.push({ a, b, type: t });
+    }
+  shuffle(candidates);
+
+  // 贪心选线索，直到解唯一
+  const countSolutions = (cs) =>
+    placements.filter(p => cs.every(cl => clueSatisfied(cl, p))).length;
+
+  let chosen = [];
+  let cur = countSolutions(chosen);
+  let improved = true;
+  while (cur > 1 && improved) {
+    improved = false;
+    for (const cand of candidates) {
+      if (chosen.includes(cand)) continue;
+      const n = countSolutions([...chosen, cand]);
+      if (n < cur) { chosen = [...chosen, cand]; cur = n; improved = true; break; }
+    }
+  }
+  return { answer, clues: chosen };
+}
+
+// ================= 渲染 =================
+function render() {
+  const L = LEVELS[level];
+  mode = L.mode;
+  picked = -1;
+  clues = [];
+  clueBox.innerHTML = "";
+  clueBox.style.display = mode === "clue" ? "flex" : "none";
+
+  if (mode === "fill") {
+    const p = makeFillPuzzle(L.size, L.blanks);
+    solution = p.solution;
+    fixed = p.fixedMap;
+    board = Array.from({ length: L.size * L.size }, (_, i) => fixed[i] ? solution[Math.floor(i / L.size)][i % L.size] : -1);
+    setHint("选一个小动物，点格子放进去；每行每列都不能重复哦！");
+  } else {
+    const p = makeCluePuzzle(L.size);
+    solutionPos = p.answer;
+    clues = p.clues;
+    fixed = Array(L.size * L.size).fill(false);
+    board = Array(L.size * L.size).fill(-1);
+    setHint("读一读线索卡，帮小动物们找到自己的位置！点卡片可以听哦～");
+    renderClues();
+  }
 
   // 棋盘
-  const cellPx = size === 3 ? "clamp(72px, 17vmin, 118px)" : "clamp(58px, 13.5vmin, 96px)";
-  boardEl.style.gridTemplateColumns = `repeat(${size}, ${cellPx})`;
+  const cellPx = L.size === 3 ? "clamp(72px, 15vmin, 108px)" : "clamp(56px, 12vmin, 88px)";
+  boardEl.style.gridTemplateColumns = `repeat(${L.size}, ${cellPx})`;
   boardEl.innerHTML = "";
   cellEls = [];
-  for (let i = 0; i < size * size; i++) {
+  for (let i = 0; i < L.size * L.size; i++) {
     const d = document.createElement("div");
     d.className = "cell" + (fixed[i] ? " fixed" : "");
     if (fixed[i]) d.appendChild(makeAnimalImg(board[i]));
@@ -220,9 +356,9 @@ function render() {
     cellEls.push(d);
   }
 
-  // 动物托盘
+  // 托盘
   trayEl.innerHTML = "";
-  for (let a = 0; a < size; a++) {
+  for (let a = 0; a < L.size; a++) {
     const t = document.createElement("div");
     t.className = "trayItem";
     t.dataset.animal = a;
@@ -243,55 +379,92 @@ function makeAnimalImg(a) {
   return im;
 }
 
-function pickAnimal(a) {
-  picked = (picked === a) ? -1 : a;
-  updateTray();
-  document.querySelectorAll(".cell").forEach(c => c.classList.remove("selected-target"));
-  if (picked >= 0) {
-    cellEls.forEach((c, i) => { if (!fixed[i] && board[i] === -1) c.classList.add("selected-target"); });
-    setHint(`已选好「${ANIMALS[picked].name}」，点一个空格子放进去吧！`);
-  }
+function renderClues() {
+  clueBox.innerHTML = "";
+  clues.forEach((cl, idx) => {
+    const card = document.createElement("div");
+    card.className = "clueCard";
+    card.dataset.idx = idx;
+    const ia = document.createElement("img"); ia.src = img(ANIMALS[cl.a].code); ia.alt = ANIMALS[cl.a].name;
+    const tx = document.createElement("span");
+    tx.textContent = clueSpeech(cl);
+    card.appendChild(ia); card.appendChild(tx);
+    if (cl.b >= 0) {
+      const ib = document.createElement("img"); ib.src = img(ANIMALS[cl.b].code); ib.alt = ANIMALS[cl.b].name;
+      card.appendChild(ib);
+    }
+    card.addEventListener("click", () => {
+      playTone(600, .08, "sine");
+      speak(clueSpeech(cl));
+    });
+    clueBox.appendChild(card);
+  });
+  updateClueStatus();
 }
 
-function updateTray() {
-  const { size } = LEVELS[level];
-  const counts = Array(size).fill(0);
-  board.forEach(v => { if (v >= 0) counts[v]++; });
-  const need = LEVELS[level].size; // 每种动物需要 size 个
-  trayEl.querySelectorAll(".trayItem").forEach(t => {
-    const a = +t.dataset.animal;
-    t.classList.toggle("pick", a === picked);
-    t.classList.toggle("empty", counts[a] >= need);
-    let b = t.querySelector(".badge");
-    if (!b) { b = document.createElement("div"); b.className = "badge"; t.appendChild(b); }
-    b.textContent = Math.max(0, need - counts[a]);
-    b.style.display = counts[a] >= need ? "none" : "block";
+function updateClueStatus() {
+  if (mode !== "clue") return;
+  const size = LEVELS[level].size;
+  clueBox.querySelectorAll(".clueCard").forEach(card => {
+    const cl = clues[+card.dataset.idx];
+    const pa = board.indexOf(cl.a);
+    const pb = cl.b >= 0 ? board.indexOf(cl.b) : 0;
+    if (pa === -1 || pb === -1) { card.classList.remove("ok", "bad"); return; }
+    const posA = { r: Math.floor(pa / size), c: pa % size };
+    const posB = cl.b >= 0 ? { r: Math.floor(pb / size), c: pb % size } : null;
+    const ok = cl.type.test(posA, posB);
+    card.classList.toggle("ok", ok);
+    card.classList.toggle("bad", !ok);
   });
 }
 
-// ---------- 交互 ----------
-function onCellClick(i) {
-  if (fixed[i]) { say("这是题目里本来就有的小动物，动不了哦～", "warn"); return; }
+function updateTray() {
+  const L = LEVELS[level];
+  const counts = Array(L.size).fill(0);
+  board.forEach(v => { if (v >= 0) counts[v]++; });
+  trayEl.querySelectorAll(".trayItem").forEach(t => {
+    const a = +t.dataset.animal;
+    t.classList.toggle("pick", a === picked);
+    t.classList.toggle("empty", counts[a] >= L.size);
+    let b = t.querySelector(".badge");
+    if (!b) { b = document.createElement("div"); b.className = "badge"; t.appendChild(b); }
+    b.textContent = Math.max(0, L.size - counts[a]);
+    b.style.display = counts[a] >= L.size ? "none" : "block";
+  });
+}
 
-  // 点已有的玩家动物 → 拿回去
+// ================= 交互 =================
+function pickAnimal(a) {
+  picked = (picked === a) ? -1 : a;
+  updateTray();
+  cellEls.forEach(c => c.classList.remove("selected-target"));
+  if (picked >= 0) {
+    cellEls.forEach((c, i) => { if (!fixed[i] && board[i] === -1) c.classList.add("selected-target"); });
+    setHint(`已选好「${ANIMALS[picked].name}」，点一个空格子放进去吧！`);
+    speak(`已选好${ANIMALS[picked].name}，点一个空格子放进去吧`);
+  }
+}
+
+function onCellClick(i) {
+  if (fixed[i]) { const m = "这是题目里本来就有的小动物，动不了哦～"; setHint(m, "warn"); speak(m); return; }
+
   if (board[i] >= 0 && picked === -1) {
     board[i] = -1;
     cellEls[i].innerHTML = "";
-    updateTray();
-    say("拿回去了，换一个试试！");
+    updateTray(); updateClueStatus();
+    setHint("拿回去了，换一个试试！");
     playTone(300, .12, "triangle");
     return;
   }
 
-  if (picked === -1) { say("先在下面选一个小动物吧！", "warn"); return; }
-  if (board[i] >= 0) { say("这里已经有一只啦，先点它把它拿回去～", "warn"); return; }
+  if (picked === -1) { const m = "先在下面选一个小动物吧！"; setHint(m, "warn"); speak(m); return; }
+  if (board[i] >= 0) { const m = "这里已经有一只啦，先点它把它拿回去～"; setHint(m, "warn"); speak(m); return; }
 
-  // 冲突检查：行 / 列
-  const { size } = LEVELS[level];
-  const r = Math.floor(i / size), c = i % size;
-  for (let k = 0; k < size; k++) {
-    if (board[r * size + k] === picked && k !== c) return reject(i, `这一行已经有「${ANIMALS[picked].name}」啦，换一个试试！`, r, c, true);
-    if (board[k * size + c] === picked && k !== r) return reject(i, `这一列已经有「${ANIMALS[picked].name}」啦，换一个试试！`, r, c, false);
+  const L = LEVELS[level];
+  const r = Math.floor(i / L.size), c = i % L.size;
+  for (let k = 0; k < L.size; k++) {
+    if (board[r * L.size + k] === picked && k !== c) return reject(i, `这一行已经有「${ANIMALS[picked].name}」啦，换一个试试！`, r, true);
+    if (board[k * L.size + c] === picked && k !== r) return reject(i, `这一列已经有「${ANIMALS[picked].name}」啦，换一个试试！`, c, false);
   }
 
   // 放置成功
@@ -301,72 +474,99 @@ function onCellClick(i) {
   cellEls[i].classList.add("justPlaced");
   setTimeout(() => cellEls[i] && cellEls[i].classList.remove("justPlaced"), 320);
   playTone(660, .1, "sine"); setTimeout(() => playTone(880, .12, "sine"), 90);
-  say(`放好啦！${ANIMALS[picked].name}真可爱～`);
   updateTray();
-  checkWin();
+
+  if (mode === "clue") {
+    const before = clueBox.querySelectorAll(".clueCard.bad").length;
+    updateClueStatus();
+    const after = clueBox.querySelectorAll(".clueCard.bad").length;
+    if (after > 0) {
+      if (after > before) {
+        const m = "咦，有个线索变红了，再想一想它该在哪里？";
+        setHint(m, "warn"); speak(m);
+      } else {
+        setHint("还有红色的线索哦，加油！");
+      }
+    } else {
+      setHint(`放好啦！${ANIMALS[picked].name}真棒～`, "good");
+      speak(`放好啦，${ANIMALS[picked].name}真棒`);
+    }
+    checkWinClue();
+  } else {
+    setHint(`放好啦！${ANIMALS[picked].name}真可爱～`);
+    checkWinFill();
+  }
 }
 
-function reject(i, msg, r, c, isRow) {
+function reject(i, msg, rc, isRow) {
+  const L = LEVELS[level];
   cellEls[i].classList.add("shake");
   setTimeout(() => cellEls[i] && cellEls[i].classList.remove("shake"), 400);
-  // 高亮冲突的那个
-  const { size } = LEVELS[level];
-  for (let k = 0; k < size; k++) {
-    const j = isRow ? r * size + k : k * size + c;
-    if (board[j] === board[j] && board[j] >= 0 && board[j] === picked) {
+  for (let k = 0; k < L.size; k++) {
+    const j = isRow ? rc * L.size + k : k * L.size + rc;
+    if (board[j] >= 0 && board[j] === picked) {
       cellEls[j].classList.add("shake");
       setTimeout(() => cellEls[j] && cellEls[j].classList.remove("shake"), 400);
     }
   }
   playTone(180, .2, "square");
-  say(msg, "warn");
+  setHint(msg, "warn");
+  speak(msg.replace(/「|」/g, ""));
 }
 
-function say(msg, cls) {
+function setHint(msg, cls) {
   hintText.textContent = msg;
   hintText.className = cls || "";
 }
 
-function checkWin() {
+function checkWinFill() { if (!board.some(v => v < 0)) win(); }
+function checkWinClue() {
   if (board.some(v => v < 0)) return;
-  // 全填满 + 放置时已拦截冲突 → 必定正确
-  playWinSound();
-  celebrate();
+  if (clueBox.querySelectorAll(".clueCard.bad").length === 0) win();
 }
 
-// ---------- 帮助 ----------
+// ================= 帮助 =================
 $("#hintBtn").addEventListener("click", () => {
-  const { size } = LEVELS[level];
+  const L = LEVELS[level];
   const empties = board.map((v, i) => v < 0 ? i : -1).filter(i => i >= 0);
-  if (!empties.length) { say("都填完啦，好厉害！", "good"); return; }
+  if (!empties.length) { setHint("都填完啦，好厉害！", "good"); return; }
   const i = empties[Math.floor(Math.random() * empties.length)];
-  const ans = solution[Math.floor(i / size)][i % size];
+  let ans;
+  if (mode === "fill") ans = solution[Math.floor(i / L.size)][i % L.size];
+  else ans = solutionPos.findIndex(p => p.r === Math.floor(i / L.size) && p.c === i % L.size);
   board[i] = ans;
   cellEls[i].innerHTML = "";
   cellEls[i].appendChild(makeAnimalImg(ans));
   cellEls[i].classList.add("hinted");
   setTimeout(() => cellEls[i] && cellEls[i].classList.remove("hinted"), 1200);
   playTone(660, .1, "sine"); setTimeout(() => playTone(990, .12, "sine"), 90);
-  say(`看！这里应该放「${ANIMALS[ans].name}」～`);
-  updateTray();
-  checkWin();
+  const m = `看！这里应该放「${ANIMALS[ans].name}」～`;
+  setHint(m); speak(m.replace(/「|」/g, ""));
+  updateTray(); updateClueStatus();
+  if (mode === "clue") checkWinClue(); else checkWinFill();
 });
 
 $("#clearBtn").addEventListener("click", () => {
   board = board.map((v, i) => fixed[i] ? v : -1);
   cellEls.forEach((c, i) => { if (!fixed[i]) c.innerHTML = ""; });
-  picked = -1; updateTray();
-  say("都拿回去了，重新开始！");
+  picked = -1; updateTray(); updateClueStatus();
+  setHint("都拿回去了，重新开始！");
+  speak("都拿回去了，重新开始");
   playTone(330, .15, "triangle");
 });
 
 $("#newBtn").addEventListener("click", () => { render(); playTone(520, .12, "sine"); });
-$("#againBtn").addEventListener("click", () => {
-  $("#celebrate").classList.remove("show");
-  render();
+$("#againBtn").addEventListener("click", () => { $("#celebrate").classList.remove("show"); render(); });
+
+// 声音开关
+$("#soundBtn").addEventListener("click", () => {
+  soundOn = !soundOn;
+  $("#soundBtn").textContent = soundOn ? "🔊 声音" : "🔇 静音";
+  if (!soundOn) { try { speechSynthesis.cancel(); } catch (e) {} }
+  else { playTone(660, .12, "sine"); speak("声音打开啦"); }
 });
 
-// ---------- 关卡 ----------
+// 关卡
 document.querySelectorAll(".lvBtn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".lvBtn").forEach(b => b.classList.remove("active"));
@@ -374,12 +574,15 @@ document.querySelectorAll(".lvBtn").forEach(btn => {
     level = +btn.dataset.lv;
     render();
     playTone(520, .12, "sine");
+    if (LEVELS[level].mode === "clue") speak("小侦探时间！读一读线索卡，帮小动物们找到位置");
   });
 });
 
-// ---------- 音效（WebAudio，无外部音频文件）----------
+// ================= 音频 =================
+// 1) WebAudio 合成音效（无音频文件）
 let AC;
 function playTone(freq, dur, type) {
+  if (!soundOn) return;
   try {
     AC = AC || new (window.AudioContext || window.webkitAudioContext)();
     if (AC.state === "suspended") AC.resume();
@@ -395,8 +598,27 @@ function playWinSound() {
   [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, .28, "sine"), i * 130));
 }
 
-// ---------- 庆祝 ----------
-function celebrate() {
+// 2) 中文语音朗读（系统自带 TTS，无需下载音频）
+function speak(text) {
+  if (!soundOn || !text) return;
+  try {
+    if (!window.speechSynthesis) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "zh-CN";
+    u.rate = 0.92;
+    u.pitch = 1.15;
+    const zh = speechSynthesis.getVoices().find(v => /zh|Chinese|中文/i.test(v.lang + " " + v.name));
+    if (zh) u.voice = zh;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => {};
+
+// ================= 庆祝 =================
+function win() {
+  playWinSound();
+  speak("你真棒！全部答对啦！");
   $("#celebrate").classList.add("show");
   const colors = ["#ff6f91", "#ffd166", "#a8e6cf", "#7fd8ff", "#c9a7ff"];
   for (let i = 0; i < 60; i++) {
