@@ -18,7 +18,7 @@ const check = (n, c, x) => { console.log((c ? "PASS " : "FAIL ") + n + (x != nul
 const btns = () => d.querySelectorAll(".lvBtn");
 
 setTimeout(() => {
-  check("版本 v12", /v12/.test(d.querySelector("#totalText").textContent), d.querySelector("#totalText").textContent);
+  check("版本 v13", /v13/.test(d.querySelector("#totalText").textContent), d.querySelector("#totalText").textContent);
   check("关卡数 = 10", btns().length === 10, btns().length);
   check("总题数 = 172", get("totalPuzzles()") === 172, get("totalPuzzles()"));
 
@@ -47,24 +47,7 @@ setTimeout(() => {
   }
   check("隐藏托盘不影响通关", d.querySelector("#celebrate").classList.contains("show"));
 
-  // ===== 语音打断 =====
-  log.speak.length = 0; log.cancel = 0;
-  click(btns()[1]);               // 小侦探（clue → 会播报）
-  awaitMs(120);
-  check("切到小侦探有播报", log.speak.length === 1, log.speak.join("|"));
-  click(btns()[2]);               // 立刻切进阶 4×4（fill，不播报）
-  check("切走立即 cancel", log.cancel >= 1, log.cancel);
-  awaitMs(150);
-  check("fill 关无新播报", log.speak.length === 1, log.speak.join("|"));
-  click(btns()[6]);               // 障碍侦探（clue → 播报）
-  awaitMs(150);
-  check("再切回侦探类有新播报", log.speak.length === 2, log.speak.join("|"));
-  // 60ms 内快速连点：旧播报不能在切走后补播
-  log.speak.length = 0; log.cancel = 0;
-  click(btns()[5]);               // 大侦探
-  click(btns()[2]);               // 60ms 内切走
-  awaitMs(200);
-  check("快速连点不补播旧语音", log.speak.length === 0 && log.cancel >= 2, `speak=${log.speak.length} cancel=${log.cancel}`);
+  // （语音打断见 v12speech.js：需真实异步计时，本文件同步执行不适合）
 
   // ===== 超级侦探 5×5（线索）=====
   click(btns()[7]);
