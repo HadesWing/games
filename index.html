@@ -1,63 +1,76 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>小小地球 · 卡通地球仪</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HadesWing 的游戏小屋</title>
+<style>
+  :root { --ink:#2b4a63; --paper:#fffdf6; }
+  * { margin:0; box-sizing:border-box; }
+  body {
+    min-height:100vh; font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+    background:linear-gradient(180deg,#bfe6f7 0%,#e8f6ef 60%,#fff7de 100%);
+    color:var(--ink); display:flex; flex-direction:column; align-items:center;
+    padding:48px 20px 64px;
+  }
+  h1 { font-size:34px; margin-bottom:8px; }
+  .sub { font-size:15px; opacity:.75; margin-bottom:36px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:22px; max-width:980px; width:100%; }
+  .card {
+    background:var(--paper); border-radius:22px; padding:26px 24px; text-decoration:none;
+    color:inherit; box-shadow:0 6px 20px rgba(40,100,140,.14);
+    transition:.18s; display:block;
+  }
+  .card:hover { transform:translateY(-4px) scale(1.02); box-shadow:0 12px 28px rgba(40,100,140,.22); }
+  .card .icon { font-size:44px; }
+  .card h2 { font-size:20px; margin:12px 0 6px; }
+  .card p { font-size:13px; line-height:1.6; opacity:.8; }
+  .card .tag {
+    display:inline-block; margin-top:14px; padding:4px 12px; border-radius:999px;
+    font-size:12px; font-weight:700;
+  }
+  .tag.play { background:#1b9c7c; color:#fff; }
+  .tag.soon { background:#eee3c8; color:#8a7440; }
+  footer { margin-top:44px; font-size:12px; opacity:.6; text-align:center; line-height:1.8; }
+</style>
 </head>
 <body>
-  <div id="loading">正在召唤地球…</div>
+  <h1>🎮 游戏小屋</h1>
+  <div class="sub">一个仓库，一个游戏一条分支 · main 只当门厅</div>
 
-  <div id="title">🌍 小小地球<small>拖一拖 · 转一转 · 点一点，认识我们的星球</small></div>
-  <div id="tip">点一点球面：热带温带下雨 💧、寒带下雪 ❄️ · 滚轮放大看中国地标</div>
-
-  <div id="boatTip" hidden>⌨️ <b>↑</b> 前进 · <b>↓</b> 后退 · <b>← →</b> 转弯（也能点下面的圆按钮）</div>
-  <div id="dpad" hidden>
-    <button class="dp up" data-k="fwd" type="button" aria-label="前进">▲</button>
-    <button class="dp left" data-k="left" type="button" aria-label="左转">◀</button>
-    <button class="dp right" data-k="right" type="button" aria-label="右转">▶</button>
-    <button class="dp down" data-k="back" type="button" aria-label="后退">▼</button>
-  </div>
-  <div id="flowLegend" hidden>
-    <b>大气环流</b> · 北半球：东北信风↘ 西风↗ 极地东风↙ · 南半球相反：东南信风↖ 西风↘ 极地东风↖<br>
-    南半球西风带最强（咆哮西风带），纬度越高风越慢
-  </div>
-
-  <div id="fact" hidden>
-    <button class="close" type="button" aria-label="关闭">✕</button>
-    <h3></h3>
-    <p></p>
-    <a class="more" target="_blank" rel="noopener noreferrer">百度百科详读 →</a>
-  </div>
-
-  <div id="controls">
-    <button class="btn on" id="btnCloud" type="button">云层</button>
-    <button class="btn" id="btnBoat" type="button">🚤 驾船</button>
-    <button class="btn" id="btnBand" type="button">气候带</button>
-    <button class="btn" id="btnFlow" type="button">大气环流</button>
-    <button class="btn" id="btnGrid" type="button">经纬网</button>
-    <button class="btn" id="btnCurrent" type="button">洋流</button>
-    <button class="btn on" id="btnSpin" type="button">自己转</button>
-
-    <div class="panel sun-box">
-      <label for="sun">☀️ 时间</label>
-      <input type="range" id="sun" min="0" max="24" step="0.5" value="12">
+  <div class="grid">
+    <a class="card" href="https://github.com/HadesWing/games/tree/earth" target="_blank" rel="noopener">
+      <div class="icon">🌍</div>
+      <h2>小小地球</h2>
+      <p>3D 卡通地球仪：拖一拖转一转，驾船环游世界，点哪里下哪里的天气，大气环流和四季雪线。</p>
+      <span class="tag play">可玩 · earth 分支</span>
+    </a>
+    <a class="card" href="https://github.com/HadesWing/games/tree/kids-sudoku" target="_blank" rel="noopener">
+      <div class="icon">🧩</div>
+      <h2>小动物数独乐园</h2>
+      <p>给小朋友的数独：小动物填空 + 方位线索推理，6 关题库、计分和进度。</p>
+      <span class="tag play">可玩 · kids-sudoku 分支</span>
+    </a>
+    <a class="card" href="https://github.com/HadesWing/games/tree/visual-detective" target="_blank" rel="noopener">
+      <div class="icon">🔍</div>
+      <h2>视觉小侦探</h2>
+      <p>5-8 岁视知觉训练原型：找不同、拼图案，练手眼协调。</p>
+      <span class="tag play">原型 · visual-detective 分支</span>
+    </a>
+    <div class="card" style="opacity:.7">
+      <div class="icon">🔤</div>
+      <h2>拼音小游戏</h2>
+      <p>Godot 做的拼音闯关，规划中，敬请期待。</p>
+      <span class="tag soon">计划中</span>
     </div>
-
-    <div class="panel season-box">
-      <label for="season">🍂 季节</label>
-      <input type="range" id="season" min="1" max="12" step="1" value="1">
-      <span id="seasonLabel">1月 · 北半球冬</span>
-      <div class="season-btns">
-        <button class="sbtn" data-month="4" type="button">春 🌸</button>
-        <button class="sbtn" data-month="7" type="button">夏 ☀️</button>
-        <button class="sbtn" data-month="10" type="button">秋 🍂</button>
-        <button class="sbtn on" data-month="1" type="button">冬 ❄️</button>
-      </div>
+    <div class="card" style="opacity:.7">
+      <div class="icon">🕹️</div>
+      <h2>像素小冒险</h2>
+      <p>2D 像素风探索小游戏，灵感收集中。</p>
+      <span class="tag soon">计划中</span>
     </div>
   </div>
 
-  <canvas id="scene"></canvas>
-  <script type="module" src="./src/main.js"></script>
+  <footer>玩法：进入对应分支 → 静态游戏直接双击 HTML · Vite 项目 npm install &amp;&amp; npm run dev</footer>
 </body>
 </html>
