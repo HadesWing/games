@@ -18,9 +18,9 @@ const check = (n, c, x) => { console.log((c ? "PASS " : "FAIL ") + n + (x != nul
 const btns = () => d.querySelectorAll(".lvBtn");
 
 setTimeout(() => {
-  check("版本 v13", /v13/.test(d.querySelector("#totalText").textContent), d.querySelector("#totalText").textContent);
-  check("关卡数 = 10", btns().length === 10, btns().length);
-  check("总题数 = 172", get("totalPuzzles()") === 172, get("totalPuzzles()"));
+  check("版本 v14", /v14/.test(d.querySelector("#totalText").textContent), d.querySelector("#totalText").textContent);
+  check("关卡数 = 14", btns().length === 14, btns().length);
+  check("总题数 = 244", get("totalPuzzles()") === 244, get("totalPuzzles()"));
 
   // ===== 托盘放完的动物整项隐藏（入门 3×3 填空）=====
   click(btns()[0]);

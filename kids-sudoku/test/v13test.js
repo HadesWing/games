@@ -19,7 +19,7 @@ const check = (n, c, x) => { console.log((c ? "PASS " : "FAIL ") + n + (x != nul
 
 (async () => {
   await delay(400);
-  check("版本 v13", /v13/.test(d.querySelector("#totalText").textContent));
+  check("版本 v14", /v14/.test(d.querySelector("#totalText").textContent));
   check("划线按钮默认关", /关/.test(d.querySelector("#markBtn").textContent));
 
   // ===== 划线提示开关 =====
