@@ -1,0 +1,12 @@
+{
+  "name": "kids-sudoku-test",
+  "version": "1.0.0",
+  "description": "小动物数独乐园 jsdom 回归测试",
+  "scripts": {
+    "test": "node regress.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "jsdom": "^31.0.0"
+  }
+}
