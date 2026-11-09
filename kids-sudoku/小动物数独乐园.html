@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<title>小动物数独乐园 v7</title>
+<title>小动物数独乐园 v8</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; overflow-x: hidden; overflow-y: auto; }
@@ -211,7 +211,7 @@
     <span id="percentText">0%</span>
     <span id="scorePill">得分 100</span>
   </div>
-  <div id="totalText">总进度 0/96 · v7</div>
+  <div id="totalText">总进度 0/96 · v8</div>
   <div id="hintText">选一个小动物，点格子放进去；每行每列都不能重复哦！</div>
   <div id="clueBox"></div>
 </header>
@@ -295,11 +295,11 @@ const img = (code) => SVG_ASSETS[code];
 // total=该关卡题库总量（每题由固定种子生成，永远同一题）
 const LEVELS = [
   { size: 3, blanks: 4,  mode: "fill", label: "入门 3×3",   icon: "🐣", total: 12 },
-  { size: 3, mode: "clue", pre: "rand", rowcol: false, label: "小侦探 3×3", icon: "🔍", total: 12 },
+  { size: 3, mode: "clue", label: "小侦探 3×3", icon: "🔍", total: 12 },
   { size: 4, blanks: 7,  mode: "fill", label: "进阶 4×4",   icon: "🐥", total: 16 },
   { size: 4, blanks: 10, mode: "fill", label: "挑战 4×4",   icon: "🐯", total: 16 },
   { size: 5, blanks: 9,  mode: "fill", label: "高手 5×5",   icon: "🦊", total: 24 },
-  { size: 4, mode: "clue", pre: 0, rowcol: true, label: "大侦探 4×4", icon: "🕵️", total: 16 },
+  { size: 4, mode: "clue", label: "大侦探 4×4", icon: "🕵️", total: 16 },
 ];
 
 // ---------- 状态 ----------
@@ -316,6 +316,7 @@ let board = [];       // 当前放的是什么（-1 空）
 let picked = -1;
 let cellEls = [];
 let soundOn = true;
+let trayIds = []; // 线索模式：本题要放的全局动物 id
 
 const $ = (s) => document.querySelector(s);
 const boardEl = $("#board"), trayEl = $("#tray"), hintText = $("#hintText"), clueBox = $("#clueBox");
@@ -404,7 +405,7 @@ function makeFillPuzzle(size, blanks) {
 }
 
 // ================= 出题：方位线索（唯一解校验）=================
-// 一个摆放 = 每只动物占一格，行不重复、列不重复
+// 一个摆放 = 每只主角动物占一格，行不重复、列不重复
 function allPlacements(size) {
   const perms = (arr) => {
     if (arr.length <= 1) return [arr];
@@ -416,7 +417,7 @@ function allPlacements(size) {
   const colPerms = perms([...Array(size).keys()]);
   const list = [];
   for (const R of rowPerms) for (const C of colPerms) {
-    const pos = []; // pos[a] = {r, c}
+    const pos = []; // pos[全局动物id] = {r, c}
     for (let a = 0; a < size; a++) pos[a] = { r: R[a], c: C[a] };
     list.push(pos);
   }
@@ -465,53 +466,57 @@ function clueSpeech(cl) {
   return cl.type.label;
 }
 
-function makeCluePuzzle(size, preSpec, useRowCol) {
+function makeCluePuzzle(size) {
   // 极少数随机布局在现有线索词表下无法区分（卡在 2 种摆法），自动换题重试
   let last;
-  for (let attempt = 0; attempt < 30; attempt++) {
-    last = makeCluePuzzleOnce(size, preSpec, useRowCol);
+  for (let attempt = 0; attempt < 40; attempt++) {
+    last = makeCluePuzzleOnce(size);
     if (last.finalCount === 1) return last;
   }
   return last;
 }
 
-function makeCluePuzzleOnce(size, preSpec, useRowCol) {
+function makeCluePuzzleOnce(size) {
   const types = makeClueTypes(size);
-  const boardArr = Array(size * size).fill(-1); // 预放动物的棋盘
-  let placements; // 每个元素是 pos 数组 pos[a]={r,c}
-  let answer;
+  // 主角动物：本题要放的 size 只（各 1 次）；其余格子用背景动物摆满，
+  // 空格子数 = 主角动物数，托盘数量和棋盘空位一一对应
+  const ids = shuffle([...Array(ANIMALS.length).keys()]);
+  const trayIds = ids.slice(0, size);
+  const sceneryIds = ids.slice(size);
 
-  if (useRowCol) {
-    // 进阶：全空白，每行每列不重复
-    placements = allPlacements(size);
-    answer = placements[Math.floor(rnd() * placements.length)];
-  } else {
-    // 基础：先预放几只动物，剩余的放到任意空格（不要求行列不重复）
-    const numPre = preSpec === "rand" ? 1 + Math.floor(rnd() * 2) : preSpec;
-    const cells = shuffle([...Array(size * size).keys()]);
-    const animalOrder = shuffle([...Array(size).keys()]);
-    for (let i = 0; i < numPre; i++) boardArr[cells[i]] = animalOrder[i];
-    const rest = animalOrder.slice(numPre);
-    const emptyCells = cells.slice(numPre);
-    placements = permsK(emptyCells, rest.length).map(p => {
-      const pos = [];
-      for (let a = 0; a < size; a++) {
-        const fi = boardArr.indexOf(a);
-        if (fi >= 0) pos[a] = { r: Math.floor(fi / size), c: fi % size };
-      }
-      rest.forEach((a, k) => pos[a] = { r: Math.floor(p[k] / size), c: p[k] % size });
-      return pos;
+  // 答案：主角动物每行每列各占一格（分布均匀）
+  const placements = allPlacements(size);
+  const picked = placements[Math.floor(rnd() * placements.length)]; // 局部索引 0..size-1
+
+  // 棋盘：答案格留空（正好 size 个），其余填背景动物
+  const fixedBoard = Array(size * size).fill(-1);
+  const emptyCells = [];
+  for (let k = 0; k < size; k++) emptyCells.push(picked[k].r * size + picked[k].c);
+  for (let i = 0; i < size * size; i++)
+    if (!emptyCells.includes(i))
+      fixedBoard[i] = sceneryIds[Math.floor(rnd() * sceneryIds.length)];
+
+  // 答案转成全局动物 id 索引
+  const answer = [];
+  trayIds.forEach((gid, k) => answer[gid] = picked[k]);
+
+  // 所有可能摆法：主角动物分配到这些空格（size! 种）
+  const allPos = permsK(trayIds, size).map(order => {
+    const pos = [];
+    order.forEach((gid, k) => {
+      const cell = emptyCells[k];
+      pos[gid] = { r: Math.floor(cell / size), c: cell % size };
     });
-    answer = placements[Math.floor(rnd() * placements.length)];
-  }
+    return pos;
+  });
 
-  // 候选线索：所有在答案下成立的线索
+  // 候选线索：所有在答案下成立的线索（引用主角动物的全局 id）
   const candidates = [];
-  for (let a = 0; a < size; a++)
+  for (const a of trayIds)
     for (const t of types.filter(t => t.kind === "single" && t.test(answer[a], null)))
       candidates.push({ a, b: -1, type: t });
-  for (let a = 0; a < size; a++)
-    for (let b = 0; b < size; b++) {
+  for (const a of trayIds)
+    for (const b of trayIds) {
       if (a === b) continue;
       for (const t of types.filter(t => t.kind === "pair" && t.test(answer[a], answer[b])))
         candidates.push({ a, b, type: t });
@@ -520,7 +525,7 @@ function makeCluePuzzleOnce(size, preSpec, useRowCol) {
 
   // 贪心选线索，直到解唯一
   const countSolutions = (cs) =>
-    placements.filter(p => cs.every(cl => clueSatisfied(cl, p))).length;
+    allPos.filter(p => cs.every(cl => clueSatisfied(cl, p))).length;
 
   let chosen = [];
   let cur = countSolutions(chosen);
@@ -533,7 +538,7 @@ function makeCluePuzzleOnce(size, preSpec, useRowCol) {
       if (n < cur) { chosen = [...chosen, cand]; cur = n; improved = true; break; }
     }
   }
-  return { answer, clues: chosen, finalCount: cur, fixedBoard: useRowCol ? null : boardArr };
+  return { answer, clues: chosen, finalCount: cur, fixedBoard, trayIds };
 }
 
 // 从 arr 中取 k 个的所有排列
@@ -559,6 +564,7 @@ function render(pIdx) {
   mode = L.mode;
   picked = -1;
   clues = [];
+  trayIds = [];
   clueBox.innerHTML = "";
   clueBox.style.display = mode === "clue" ? "flex" : "none";
 
@@ -569,17 +575,13 @@ function render(pIdx) {
     board = Array.from({ length: L.size * L.size }, (_, i) => fixed[i] ? solution[Math.floor(i / L.size)][i % L.size] : -1);
     setHint("选一个小动物，点格子放进去；每行每列都不能重复哦！");
   } else {
-    const p = makeCluePuzzle(L.size, L.pre, L.rowcol);
+    const p = makeCluePuzzle(L.size);
     solutionPos = p.answer;
     clues = p.clues;
-    fixed = Array(L.size * L.size).fill(false);
-    board = Array(L.size * L.size).fill(-1);
-    if (p.fixedBoard) {
-      p.fixedBoard.forEach((v, i) => { if (v >= 0) { fixed[i] = true; board[i] = v; } });
-      setHint("有几只小动物已经站好啦！读一读线索卡，把剩下的小动物送到位～");
-    } else {
-      setHint("读一读线索卡，帮小动物们找到自己的位置！点卡片可以听哦～");
-    }
+    trayIds = p.trayIds;
+    fixed = p.fixedBoard.map(v => v >= 0);
+    board = p.fixedBoard.slice();
+    setHint(`棋盘上留了 ${L.size} 个空位，读一读线索卡，把小动物们送到位！点卡片可以听哦～`);
     renderClues();
   }
 
@@ -603,7 +605,8 @@ function render(pIdx) {
 
   // 托盘
   trayEl.innerHTML = "";
-  for (let a = 0; a < L.size; a++) {
+  const trayList = mode === "clue" ? trayIds : [...Array(L.size).keys()];
+  for (const a of trayList) {
     const t = document.createElement("div");
     t.className = "trayItem";
     t.dataset.animal = a;
@@ -628,7 +631,7 @@ function updateStats() {
   $("#barInner").style.width = pct + "%";
   $("#percentText").textContent = pct + "%";
   $("#scorePill").textContent = `本题 ${currentScore} 分`;
-  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${Object.keys(LEVELS).filter(i => levelDone(+i) >= LEVELS[i].total).length} 个关卡 · v7`;
+  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${Object.keys(LEVELS).filter(i => levelDone(+i) >= LEVELS[i].total).length} 个关卡 · v8`;
   // 关卡按钮小字
   document.querySelectorAll(".lvBtn").forEach((b, i) => {
     const s = b.querySelector("small");
@@ -713,12 +716,22 @@ function cluePictogram(cl) {
     box.appendChild(miniTile(-1));
     box.appendChild(miniTile(cl.b));
   } else {
-    // 单动物线索：3×3 迷你盘，绿色高亮允许区域
+    // 单动物线索：迷你盘，绿色高亮允许区域（随棋盘尺寸变化）
+    const ms = (mode === "clue" ? LEVELS[level].size : 3);
+    const last = ms - 1, mid = Math.floor(ms / 2);
+    const hiSet = new Set();
+    for (let r = 0; r < ms; r++) for (let c = 0; c < ms; c++) {
+      const hit = t === "corner" ? (r === 0 || r === last) && (c === 0 || c === last)
+        : t === "top" ? r === 0
+        : t === "bottom" ? r === last
+        : t === "leftcol" ? c === 0
+        : c === last;
+      if (hit) hiSet.add(r * ms + c);
+    }
+    const at = { corner: 0, top: mid, bottom: last * ms + mid, leftcol: mid * ms, rightcol: mid * ms + last }[t];
     box.className = "miniGrid";
-    box.style.gridTemplateColumns = "repeat(3, auto)";
-    const hiCells = { corner: [0, 2, 6, 8], top: [0, 1, 2], bottom: [6, 7, 8], leftcol: [0, 3, 6], rightcol: [2, 5, 8] }[t];
-    const at = { corner: 0, top: 1, bottom: 7, leftcol: 3, rightcol: 5 }[t];
-    for (let i = 0; i < 9; i++) box.appendChild(miniTile(i === at ? cl.a : -1, hiCells.includes(i)));
+    box.style.gridTemplateColumns = `repeat(${ms}, auto)`;
+    for (let i = 0; i < ms * ms; i++) box.appendChild(miniTile(i === at ? cl.a : -1, hiSet.has(i)));
   }
   return box;
 }
@@ -757,9 +770,9 @@ function updateClueStatus() {
 
 function updateTray() {
   const L = LEVELS[level];
-  // 填空模式每种动物要放 size 只；线索模式每只动物只放 1 次
+  // 填空模式每种动物要放 size 只；线索模式每只主角动物只放 1 次
   const need = mode === "clue" ? 1 : L.size;
-  const counts = Array(L.size).fill(0);
+  const counts = Array(ANIMALS.length).fill(0);
   board.forEach(v => { if (v >= 0) counts[v]++; });
   trayEl.querySelectorAll(".trayItem").forEach(t => {
     const a = +t.dataset.animal;
@@ -774,6 +787,15 @@ function updateTray() {
 
 // ================= 交互 =================
 function pickAnimal(a) {
+  // 线索模式：这只动物已经放好了，不能再选（防止重复放导致死局）
+  if (mode === "clue" && board.indexOf(a) >= 0) {
+    picked = -1;
+    updateTray();
+    cellEls.forEach(c => c.classList.remove("selected-target"));
+    setHint(`「${ANIMALS[a].name}」已经放好啦！`);
+    playTone(300, .12, "triangle");
+    return;
+  }
   picked = (picked === a) ? -1 : a;
   updateTray();
   cellEls.forEach(c => c.classList.remove("selected-target"));
@@ -801,8 +823,8 @@ function onCellClick(i) {
 
   const L = LEVELS[level];
   const r = Math.floor(i / L.size), c = i % L.size;
-  // 填空模式始终要求每行每列不重复；线索模式看关卡配置
-  if (mode === "fill" || L.rowcol) {
+  // 填空模式要求每行每列不重复（线索模式每只动物只放 1 次，无需行列校验）
+  if (mode === "fill") {
     for (let k = 0; k < L.size; k++) {
       if (board[r * L.size + k] === picked && k !== c) return reject(i, `这一行已经有「${ANIMALS[picked].name}」啦，换一个试试！`, r, true);
       if (board[k * L.size + c] === picked && k !== r) return reject(i, `这一列已经有「${ANIMALS[picked].name}」啦，换一个试试！`, c, false);
@@ -865,9 +887,8 @@ function setHint(msg, cls) {
 
 function checkWinFill() { if (!board.some(v => v < 0)) win(); }
 function checkWinClue() {
-  // 只要每只动物都放了位置 + 所有线索全绿即胜利（空格子可以留空）
-  const L = LEVELS[level];
-  for (let a = 0; a < L.size; a++) if (board.indexOf(a) === -1) return;
+  // 棋盘填满（空位数 = 动物数，全放上即满）+ 所有线索全绿即胜利
+  if (board.some(v => v < 0)) return;
   if (clueBox.querySelectorAll(".clueCard.bad").length === 0) win();
 }
 
