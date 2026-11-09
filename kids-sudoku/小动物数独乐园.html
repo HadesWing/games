@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>小动物数独乐园 v6</title>
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>小动物数独乐园 v7</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; overflow-x: hidden; overflow-y: auto; }
@@ -92,6 +93,8 @@
     display: flex; align-items: center; justify-content: center;
     transition: transform .12s, background .15s;
   }
+  /* 关键修复：行高不能依赖内容，否则全空棋盘（大侦探）会塌缩成 0 高度整个消失 */
+  .cell { aspect-ratio: 1 / 1; }
   .cell:hover { transform: scale(1.04); }
   .cell.fixed { background: #fff3d6; cursor: default; }
   .cell.fixed:hover { transform: none; }
@@ -151,6 +154,51 @@
     animation: fall linear forwards; z-index: 40; pointer-events: none;
   }
   @keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: .7; } }
+
+  /* 统计 / 图例弹层（复用庆祝弹层结构） */
+  #statsPanel, #legend {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.55); backdrop-filter: blur(3px); z-index: 50; flex-direction: column;
+    padding: 12px;
+  }
+  #statsPanel.show, #legend.show { display: flex; }
+  #statsPanel .card, #legend .card {
+    background: #fff; border-radius: 28px; padding: 22px 26px; text-align: center;
+    box-shadow: 0 20px 60px rgba(120,90,160,.3); animation: dropIn .5s cubic-bezier(.2,1.6,.4,1);
+    max-width: min(92vw, 460px); max-height: 86vh; overflow-y: auto;
+  }
+  #statsPanel h2, #legend h2 { color: #ff6f91; font-size: clamp(20px, 4.4vmin, 30px); margin: 4px 0 12px; }
+  #statsSummary { font-size: clamp(13px, 2.6vmin, 16px); color: #6b7a8f; font-weight: bold; margin-bottom: 10px; }
+  .statRow {
+    display: flex; align-items: center; gap: 8px; margin: 6px 0;
+    font-size: clamp(12px, 2.4vmin, 15px); font-weight: bold; color: #6b7a8f;
+    text-align: left;
+  }
+  .statRow .barOuter { flex: 1; width: auto; }
+  .statRow .stars100 { color: #ffb020; white-space: nowrap; }
+  #statsPanel .actBtn, #legend .actBtn { margin: 10px 4px 0; }
+  #resetBtn { background: #ffe3ec; color: #c2426a; }
+  #resetBtn.armed { background: #ff5470; color: #fff; animation: pop .3s; }
+  .legendSec { font-size: clamp(12px, 2.5vmin, 15px); color: #6b7a8f; margin: 8px 0; text-align: left; }
+  .legendGrid { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+  .legendRow { display: flex; align-items: center; gap: 10px; }
+  .legendTxt { font-size: clamp(11px, 2.3vmin, 14px); color: #6b7a8f; text-align: left; }
+
+  /* 线索卡迷你示意图（图形化线索，不识字也能玩） */
+  .miniRel { display: flex; align-items: center; gap: 3px; }
+  .miniRel.col { flex-direction: column; }
+  .miniGrid { display: grid; gap: 2px; }
+  .miniTile {
+    width: clamp(20px, 3.8vmin, 30px); height: clamp(20px, 3.8vmin, 30px);
+    border-radius: 7px; background: #f4f6fb;
+    display: flex; align-items: center; justify-content: center; padding: 1px;
+    box-sizing: border-box;
+  }
+  .miniTile img { width: 88%; height: 88%; pointer-events: none; }
+  .miniTile.hi { background: #e2f8e9; box-shadow: inset 0 0 0 2px #7cd992; }
+  .miniTile.touchR { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  .miniTile.touchL { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .miniArrow { font-size: clamp(13px, 2.6vmin, 20px); line-height: 1; }
 </style>
 </head>
 <body>
@@ -163,7 +211,7 @@
     <span id="percentText">0%</span>
     <span id="scorePill">得分 100</span>
   </div>
-  <div id="totalText">总进度 0/72 · v6</div>
+  <div id="totalText">总进度 0/96 · v7</div>
   <div id="hintText">选一个小动物，点格子放进去；每行每列都不能重复哦！</div>
   <div id="clueBox"></div>
 </header>
@@ -173,6 +221,8 @@
 <div id="tray"></div>
 <div id="btnBar">
   <button class="actBtn" id="soundBtn">🔊 声音</button>
+  <button class="actBtn" id="legendBtn">❓ 玩法</button>
+  <button class="actBtn" id="statsBtn">📊 我的</button>
   <button class="actBtn" id="clearBtn">↩️ 拿回去</button>
   <button class="actBtn" id="newBtn">🔄 换一题</button>
 </div>
@@ -184,6 +234,36 @@
     <div id="winScore">本题 100 分</div>
     <div id="winProg">本关已完成 1/12</div>
     <button class="actBtn" id="againBtn">下一题 🎈</button>
+  </div>
+</div>
+
+<!-- 📊 我的：进度统计 -->
+<div id="statsPanel">
+  <div class="card">
+    <h2>📊 我的成绩</h2>
+    <div id="statsSummary"></div>
+    <div id="statsList"></div>
+    <button class="actBtn" id="resetBtn">🗑️ 重置全部进度</button>
+    <button class="actBtn" id="statsCloseBtn">返回</button>
+  </div>
+</div>
+
+<!-- ❓ 玩法图例（给家长讲规则用） -->
+<div id="legend">
+  <div class="card">
+    <h2>❓ 怎么玩</h2>
+    <div class="legendSec"><b>基础规则</b>：每行、每列里同一种小动物只能出现一次。选下面的动物，点格子放进去。</div>
+    <div class="legendSec"><b>线索卡怎么看</b>（点卡片可以听）：</div>
+    <div class="legendGrid">
+      <div class="legendRow"><span data-demo="left"></span><span class="legendTxt">顺着箭头走能找到第二只：<br>青蛙在熊的左边</span></div>
+      <div class="legendRow"><span data-demo="above"></span><span class="legendTxt">青蛙在熊的上面</span></div>
+      <div class="legendRow"><span data-demo="adjacent"></span><span class="legendTxt">两只小动物紧挨着</span></div>
+      <div class="legendRow"><span data-demo="diagonal"></span><span class="legendTxt">两只小动物斜着挨着</span></div>
+      <div class="legendRow"><span data-demo="corner"></span><span class="legendTxt">这只动物坐在角落里</span></div>
+      <div class="legendRow"><span data-demo="top"></span><span class="legendTxt">这只动物坐在最上面一排</span></div>
+    </div>
+    <div class="legendSec">线索卡变绿 ✓ = 放对了；变红 ✗ = 和线索矛盾，再想一想。</div>
+    <button class="actBtn" id="legendCloseBtn">返回</button>
   </div>
 </div>
 
@@ -216,10 +296,10 @@ const img = (code) => SVG_ASSETS[code];
 const LEVELS = [
   { size: 3, blanks: 4,  mode: "fill", label: "入门 3×3",   icon: "🐣", total: 12 },
   { size: 3, mode: "clue", pre: "rand", rowcol: false, label: "小侦探 3×3", icon: "🔍", total: 12 },
-  { size: 4, blanks: 7,  mode: "fill", label: "进阶 4×4",   icon: "🐥", total: 12 },
-  { size: 4, blanks: 10, mode: "fill", label: "挑战 4×4",   icon: "🐯", total: 12 },
-  { size: 5, blanks: 9,  mode: "fill", label: "高手 5×5",   icon: "🦊", total: 12 },
-  { size: 4, mode: "clue", pre: 0, rowcol: true, label: "大侦探 4×4", icon: "🕵️", total: 12 },
+  { size: 4, blanks: 7,  mode: "fill", label: "进阶 4×4",   icon: "🐥", total: 16 },
+  { size: 4, blanks: 10, mode: "fill", label: "挑战 4×4",   icon: "🐯", total: 16 },
+  { size: 5, blanks: 9,  mode: "fill", label: "高手 5×5",   icon: "🦊", total: 24 },
+  { size: 4, mode: "clue", pre: 0, rowcol: true, label: "大侦探 4×4", icon: "🕵️", total: 16 },
 ];
 
 // ---------- 状态 ----------
@@ -508,6 +588,8 @@ function render(pIdx) {
                : L.size === 4 ? "clamp(56px, 12vmin, 88px)"
                : "clamp(44px, 9.5vmin, 70px)";
   boardEl.style.gridTemplateColumns = `repeat(${L.size}, ${cellPx})`;
+  // 双保险：显式行高，防止空行/全空棋盘塌缩
+  boardEl.style.gridAutoRows = cellPx;
   boardEl.innerHTML = "";
   cellEls = [];
   for (let i = 0; i < L.size * L.size; i++) {
@@ -546,7 +628,7 @@ function updateStats() {
   $("#barInner").style.width = pct + "%";
   $("#percentText").textContent = pct + "%";
   $("#scorePill").textContent = `本题 ${currentScore} 分`;
-  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${Object.keys(LEVELS).filter(i => levelDone(+i) >= LEVELS[i].total).length} 个关卡 · v6`;
+  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${Object.keys(LEVELS).filter(i => levelDone(+i) >= LEVELS[i].total).length} 个关卡 · v7`;
   // 关卡按钮小字
   document.querySelectorAll(".lvBtn").forEach((b, i) => {
     const s = b.querySelector("small");
@@ -583,20 +665,71 @@ function makeAnimalImg(a) {
   return im;
 }
 
+// ---- 线索卡迷你示意图（图形化，不识字也能玩）----
+function miniTile(a, hi) {
+  const t = document.createElement("div");
+  t.className = "miniTile" + (hi ? " hi" : "");
+  if (a >= 0) {
+    const im = document.createElement("img");
+    im.src = img(ANIMALS[a].code);
+    im.alt = ANIMALS[a].name;
+    t.appendChild(im);
+  }
+  return t;
+}
+function miniArrow(ch) {
+  const s = document.createElement("span");
+  s.className = "miniArrow";
+  s.textContent = ch;
+  return s;
+}
+function cluePictogram(cl) {
+  const box = document.createElement("div");
+  const t = cl.type.id;
+  if (t === "left" || t === "right") {
+    // 顺着箭头走能找到第二只：青蛙 ➡️ 熊 = 熊在青蛙右边 = 青蛙在熊的左边
+    box.className = "miniRel";
+    box.appendChild(miniTile(t === "left" ? cl.a : cl.b));
+    box.appendChild(miniArrow("➡️"));
+    box.appendChild(miniTile(t === "left" ? cl.b : cl.a));
+  } else if (t === "above" || t === "below") {
+    box.className = "miniRel col";
+    box.appendChild(miniTile(t === "above" ? cl.a : cl.b));
+    box.appendChild(miniArrow("⬇️"));
+    box.appendChild(miniTile(t === "above" ? cl.b : cl.a));
+  } else if (t === "adjacent") {
+    // 两块贴在一起 = 紧挨着
+    box.className = "miniRel";
+    box.style.gap = "0";
+    const t1 = miniTile(cl.a); t1.classList.add("touchL");
+    const t2 = miniTile(cl.b); t2.classList.add("touchR");
+    box.appendChild(t1); box.appendChild(t2);
+  } else if (t === "diagonal") {
+    // 斜角相触 = 斜着挨着
+    box.className = "miniGrid";
+    box.style.gridTemplateColumns = "repeat(2, auto)";
+    box.appendChild(miniTile(cl.a));
+    box.appendChild(miniTile(-1));
+    box.appendChild(miniTile(-1));
+    box.appendChild(miniTile(cl.b));
+  } else {
+    // 单动物线索：3×3 迷你盘，绿色高亮允许区域
+    box.className = "miniGrid";
+    box.style.gridTemplateColumns = "repeat(3, auto)";
+    const hiCells = { corner: [0, 2, 6, 8], top: [0, 1, 2], bottom: [6, 7, 8], leftcol: [0, 3, 6], rightcol: [2, 5, 8] }[t];
+    const at = { corner: 0, top: 1, bottom: 7, leftcol: 3, rightcol: 5 }[t];
+    for (let i = 0; i < 9; i++) box.appendChild(miniTile(i === at ? cl.a : -1, hiCells.includes(i)));
+  }
+  return box;
+}
+
 function renderClues() {
   clueBox.innerHTML = "";
   clues.forEach((cl, idx) => {
     const card = document.createElement("div");
     card.className = "clueCard";
     card.dataset.idx = idx;
-    const ia = document.createElement("img"); ia.src = img(ANIMALS[cl.a].code); ia.alt = ANIMALS[cl.a].name;
-    const tx = document.createElement("span");
-    tx.textContent = clueSpeech(cl);
-    card.appendChild(ia); card.appendChild(tx);
-    if (cl.b >= 0) {
-      const ib = document.createElement("img"); ib.src = img(ANIMALS[cl.b].code); ib.alt = ANIMALS[cl.b].name;
-      card.appendChild(ib);
-    }
+    card.appendChild(cluePictogram(cl));
     card.addEventListener("click", () => {
       playTone(600, .08, "sine");
       speak(clueSpeech(cl));
@@ -764,6 +897,88 @@ $("#soundBtn").addEventListener("click", () => {
   $("#soundBtn").textContent = soundOn ? "🔊 声音" : "🔇 静音";
   if (!soundOn) { try { speechSynthesis.cancel(); } catch (e) {} }
   else { playTone(660, .12, "sine"); speak("声音打开啦"); }
+});
+
+// ================= 📊 我的：进度统计 =================
+function buildStats() {
+  let stars = 0;
+  for (const lv in progress) for (const p in progress[lv]) if (progress[lv][p] === 100) stars++;
+  const cleared = LEVELS.filter((_, i) => levelDone(i) >= LEVELS[i].total).length;
+  $("#statsSummary").textContent =
+    `总进度 ${totalDone()}/${totalPuzzles()} 题 · 满分 ⭐×${stars} · 已通关 ${cleared} 个关卡`;
+  const list = $("#statsList");
+  list.innerHTML = "";
+  LEVELS.forEach((L, i) => {
+    const d = levelDone(i);
+    let s = 0;
+    const m = progress[i] || {};
+    for (const p in m) if (m[p] === 100) s++;
+    const pct = Math.round(d / L.total * 100);
+    const row = document.createElement("div");
+    row.className = "statRow";
+    row.innerHTML =
+      `<span style="min-width:7.5em">${L.icon} ${L.label}</span>` +
+      `<div class="barOuter"><div class="barInner" style="width:${pct}%"></div></div>` +
+      `<span>${d}/${L.total}</span>` +
+      `<span class="stars100">${s ? "⭐×" + s : ""}</span>`;
+    list.appendChild(row);
+  });
+}
+let resetArmed = false;
+function disarmReset() {
+  resetArmed = false;
+  const b = $("#resetBtn");
+  b.classList.remove("armed");
+  b.textContent = "🗑️ 重置全部进度";
+}
+$("#statsBtn").addEventListener("click", () => {
+  buildStats();
+  disarmReset();
+  $("#statsPanel").classList.add("show");
+  playTone(520, .12, "sine");
+});
+$("#statsCloseBtn").addEventListener("click", () => {
+  $("#statsPanel").classList.remove("show");
+  playTone(300, .1, "triangle");
+});
+$("#resetBtn").addEventListener("click", () => {
+  if (!resetArmed) {
+    resetArmed = true;
+    const b = $("#resetBtn");
+    b.classList.add("armed");
+    b.textContent = "⚠️ 再点一次，确认清空全部进度！";
+    speak("再点一次，确认清空全部进度");
+    return;
+  }
+  progress = {};
+  saveProgress();
+  disarmReset();
+  buildLevelBar();
+  buildStats();
+  render(nextPuzzleIndex(level, -1));
+  setHint("进度已全部重置，重新开始吧！", "good");
+  speak("进度已全部重置，重新开始吧");
+});
+
+// ================= ❓ 玩法图例 =================
+const DEMO_CLUES = {
+  left:     { a: 2, b: 1, type: { id: "left" } },
+  above:    { a: 2, b: 1, type: { id: "above" } },
+  adjacent: { a: 2, b: 1, type: { id: "adjacent" } },
+  diagonal: { a: 2, b: 1, type: { id: "diagonal" } },
+  corner:   { a: 2, b: -1, type: { id: "corner" } },
+  top:      { a: 2, b: -1, type: { id: "top" } },
+};
+document.querySelectorAll("[data-demo]").forEach(el => {
+  el.appendChild(cluePictogram(DEMO_CLUES[el.dataset.demo]));
+});
+$("#legendBtn").addEventListener("click", () => {
+  $("#legend").classList.add("show");
+  playTone(520, .12, "sine");
+});
+$("#legendCloseBtn").addEventListener("click", () => {
+  $("#legend").classList.remove("show");
+  playTone(300, .1, "triangle");
 });
 
 // 关卡按钮（带完成进度小字）
