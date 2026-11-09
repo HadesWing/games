@@ -12,7 +12,7 @@ let failed = 0;
 const check = (n, c, x) => { console.log((c ? "PASS " : "FAIL ") + n + (x != null ? " → " + x : "")); if (!c) failed++; };
 
 setTimeout(() => {
-  check("版本 v11", /v11/.test(d.querySelector("#totalText").textContent));
+  check("版本 v12", /v12/.test(d.querySelector("#totalText").textContent));
 
   // ===== 小侦探通关 → 回看高亮 =====
   click(d.querySelectorAll(".lvBtn")[1]);
