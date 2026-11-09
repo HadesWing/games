@@ -19,6 +19,7 @@ function bindToggle(id, onChange) {
 export function initControls({ controls, sun, cloud, climateBands, circulation, graticule, currents, snow, boat, onBoatChange }) {
   const tip = $('tip');
   const boatTip = $('boatTip');
+  const dpad = $('dpad');
   const flowLegend = $('flowLegend');
   const btnBoat = $('btnBoat');
   const btnSpin = $('btnSpin');
@@ -38,6 +39,25 @@ export function initControls({ controls, sun, cloud, climateBands, circulation, 
     if (!boat.state.on) controls.autoRotate = on;
   });
 
+  // 大方向键：按下=一直走/一直转，松开=停（和键盘同一套输入）
+  dpad.querySelectorAll('.dp').forEach((btn) => {
+    const k = btn.dataset.k;
+    const press = (e) => {
+      e.preventDefault();
+      if (btn.setPointerCapture && e.pointerId !== undefined) btn.setPointerCapture(e.pointerId);
+      boat.setInput(k, true);
+      btn.classList.add('pressed');
+    };
+    const release = () => {
+      boat.setInput(k, false);
+      btn.classList.remove('pressed');
+    };
+    btn.addEventListener('pointerdown', press);
+    btn.addEventListener('pointerup', release);
+    btn.addEventListener('pointercancel', release);
+    btn.addEventListener('pointerleave', release);
+  });
+
   // 驾船
   btnBoat.addEventListener('click', () => {
     const on = !boat.state.on;
@@ -45,6 +65,7 @@ export function initControls({ controls, sun, cloud, climateBands, circulation, 
     btnBoat.classList.toggle('on', on);
     btnBoat.textContent = on ? '⚓ 下船' : '🚤 驾船';
     boatTip.hidden = !on;
+    dpad.hidden = !on;
     controls.autoRotate = on ? false : btnSpin.classList.contains('on');
     tip.textContent = on
       ? '你在开船啦！↑ 前进 · ←→ 转向 · 小心别撞岸！'

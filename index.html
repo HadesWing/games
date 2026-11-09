@@ -11,7 +11,13 @@
   <div id="title">🌍 小小地球<small>拖一拖 · 转一转 · 点一点，认识我们的星球</small></div>
   <div id="tip">点一点球面：热带温带下雨 💧、寒带下雪 ❄️ · 滚轮放大看中国地标</div>
 
-  <div id="boatTip" hidden>⌨️ <b>W/↑</b> 前进 · <b>A/D ←→</b> 转向 · <b>S/↓</b> 后退 · 小心别撞岸！</div>
+  <div id="boatTip" hidden>⌨️ <b>↑</b> 前进 · <b>↓</b> 后退 · <b>← →</b> 转弯（也能点下面的圆按钮）</div>
+  <div id="dpad" hidden>
+    <button class="dp up" data-k="fwd" type="button" aria-label="前进">▲</button>
+    <button class="dp left" data-k="left" type="button" aria-label="左转">◀</button>
+    <button class="dp right" data-k="right" type="button" aria-label="右转">▶</button>
+    <button class="dp down" data-k="back" type="button" aria-label="后退">▼</button>
+  </div>
   <div id="flowLegend" hidden>
     <b>大气环流</b> · 北半球：东北信风↘ 西风↗ 极地东风↙ · 南半球相反：东南信风↖ 西风↘ 极地东风↖<br>
     南半球西风带最强（咆哮西风带），纬度越高风越慢

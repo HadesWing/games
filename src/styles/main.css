@@ -116,6 +116,25 @@ html, body {
 }
 #flowLegend b { color: var(--ink); }
 
+/* 驾船：屏幕上的大方向键（鼠标点、手指按都行） */
+#dpad {
+  position: fixed; right: 22px; bottom: 110px; z-index: 11;
+  display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 56px);
+  gap: 6px; touch-action: none; user-select: none;
+}
+#dpad[hidden] { display: none; }
+.dp {
+  border: none; border-radius: 50%; font-size: 20px; line-height: 1;
+  background: rgba(255, 255, 255, 0.92); color: #2a6a8a; cursor: pointer;
+  box-shadow: 0 3px 10px rgba(30, 90, 130, 0.22);
+  transition: 0.1s; touch-action: none;
+}
+.dp.pressed { background: #1b9c7c; color: #fff; transform: scale(0.93); }
+.dp.up { grid-area: 1 / 2; }
+.dp.left { grid-area: 2 / 1; }
+.dp.right { grid-area: 2 / 3; }
+.dp.down { grid-area: 3 / 2; }
+
 #boatTip[hidden], #flowLegend[hidden], #fact[hidden] { display: none; }
 
 @media (max-width: 720px) {

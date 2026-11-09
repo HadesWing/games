@@ -26,7 +26,7 @@ function makeWakeTexture() {
  * 撞到陆地会被弹开（真实海岸线碰撞），船后拖出一串渐隐的尾迹泡泡。
  */
 export function createBoat({ globe, camera, controls }) {
-  const state = { lat: 8, lon: 145, heading: 0.5, speed: 0, on: false };
+  const state = { lat: 8, lon: 145, heading: 0.5, speed: 0, lean: 0, on: false };
 
   const sprite = new THREE.Sprite(spriteMaterial('boat'));
   sprite.scale.set(0.075, 0.075, 1);
@@ -44,21 +44,33 @@ export function createBoat({ globe, camera, controls }) {
   });
 
   // 按键状态：方向键在开船时阻止默认行为（防页面滚动），切走/失焦立刻清空
-  const keys = {};
-  const ARROWS = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
+  // 操控：↑/W 前进 · ↓/S 后退 · ←/A 左转 · →/D 右转（屏幕上的大方向键走同一套输入）
+  const input = { fwd: false, back: false, left: false, right: false };  const ARROWS = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
+  const KEYMAP = {
+    arrowup: 'fwd', w: 'fwd',
+    arrowdown: 'back', s: 'back',
+    arrowleft: 'left', a: 'left',
+    arrowright: 'right', d: 'right',
+  };
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (state.on && ARROWS.includes(k)) e.preventDefault();
-    keys[k] = true;
+    if (KEYMAP[k]) input[KEYMAP[k]] = true;
   });
-  window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
-  window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+  window.addEventListener('keyup', (e) => {
+    const k = e.key.toLowerCase();
+    if (KEYMAP[k]) input[KEYMAP[k]] = false;
+  });
+  window.addEventListener('blur', () => {
+    for (const k in input) input[k] = false;
+  });
 
   function setActive(on) {
     state.on = on;
     sprite.visible = on;
     if (!on) {
       wake.forEach((w) => { w.visible = false; });
+      for (const k in input) input[k] = false; // 下船时清空，防止按键卡住
       camera.up.set(0, 1, 0); // 还给轨道控制器一个正经的上方向
     }
   }
@@ -74,14 +86,16 @@ export function createBoat({ globe, camera, controls }) {
   function update(dt, elapsed) {
     if (!state.on) return;
 
-    const turn = (keys.a || keys.arrowleft ? 1 : 0) - (keys.d || keys.arrowright ? 1 : 0);
-    const thrust = (keys.w || keys.arrowup ? 1 : 0) - (keys.s || keys.arrowdown ? 1 : 0);
-    // 低速时转向也全功率 —— 小朋友不用先加速才能掉头
-    state.heading += turn * dt * 2.1;
-    state.speed += thrust * dt * 0.18;
-    state.speed = Math.max(-0.05, Math.min(0.15, state.speed));
-    state.speed *= Math.max(0, 1 - dt * 1.1); // 松手很快停下，可控
+    const turn = (input.left ? 1 : 0) - (input.right ? 1 : 0);
+    const thrust = (input.fwd ? 1 : 0) - (input.back ? 1 : 0);
+    // 原地就能掉头（不用先加速），转向力度跟得上按键节奏
+    state.heading += turn * dt * 2.4;
+    state.speed += thrust * dt * 0.22;
+    state.speed = Math.max(-0.06, Math.min(0.18, state.speed));
+    state.speed *= Math.max(0, 1 - dt * 2.0); // 松手马上停，像小船滑一小段就停住
     if (Math.abs(state.speed) < 0.0008) state.speed = 0;
+    // 转向侧倾：船身微微歪一下，手上有没有反应一眼看出来
+    state.lean += ((turn ? turn * 0.13 : 0) - state.lean) * Math.min(1, dt * 8);
 
     const stride = state.speed * dt;
     const next = stepLatLon(state.lat, state.lon, stride, state.heading);
@@ -95,8 +109,8 @@ export function createBoat({ globe, camera, controls }) {
     }
 
     sprite.position.copy(ll2v(state.lat, state.lon, 1.014));
-    // 第三人称镜头里船头永远朝屏幕上方（图片朝向差一个固定角，截图校准）
-    sprite.material.rotation = Math.PI;
+    // 第三人称镜头里船头永远朝屏幕上方；转向时加一点侧倾
+    sprite.material.rotation = Math.PI + state.lean;
 
     // 尾迹
     const backDir = state.heading + Math.PI;
@@ -128,5 +142,5 @@ export function createBoat({ globe, camera, controls }) {
     );
   }
 
-  return { state, setActive, update };
+  return { state, setActive, update, setInput(k, on) { if (k in input) input[k] = on; } };
 }
