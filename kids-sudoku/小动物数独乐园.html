@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<title>小动物数独乐园 v11</title>
+<title>小动物数独乐园 v12</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { min-height: 100%; overflow-x: hidden; }
@@ -223,7 +223,7 @@
     <span id="percentText">0%</span>
     <span id="scorePill">得分 100</span>
   </div>
-  <div id="totalText">总进度 0/112 · v11</div>
+  <div id="totalText">总进度 0/172 · v12</div>
   <div id="hintText">选一个小动物，点格子放进去；每行每列都不能重复哦！</div>
   <div id="clueBox"></div>
 </header>
@@ -335,6 +335,9 @@ const LEVELS = [
   { size: 5, blanks: 9,  mode: "fill", label: "高手 5×5",   icon: "🦊", total: 24 },
   { size: 4, mode: "clue", label: "大侦探 4×4", icon: "🕵️", total: 16 },
   { size: 4, mode: "clue", obs: true, label: "障碍侦探 4×4", icon: "🌵", total: 16 },
+  { size: 5, mode: "clue", label: "超级侦探 5×5", icon: "🧠", total: 20 },
+  { size: 6, blanks: 18, mode: "fill", label: "大师 6×6", icon: "🐉", total: 20 },
+  { size: 7, blanks: 28, mode: "fill", label: "王者 7×7", icon: "🦄", total: 20 },
 ];
 
 // ---------- 状态 ----------
@@ -352,6 +355,7 @@ let picked = -1;
 let cellEls = [];
 let soundOn = true;
 let trayIds = []; // 线索模式：本题要放的全局动物 id
+let fillTray = []; // 填空模式：本题托盘里出现的动物 id
 let justWon = false; // 本题已通关（回看棋盘时锁定棋盘）
 
 const $ = (s) => document.querySelector(s);
@@ -427,13 +431,14 @@ function nextPuzzleIndex(lv, excludeCur) {
 }
 
 // ================= 出题：填空数独 =================
-function makeFillPuzzle(size, blanks) {
+// idMap：动物全局 id 映射（大棋盘每关随机换一批动物，小棋盘固定用前 size 只）
+function makeFillPuzzle(size, blanks, idMap) {
   let sq = Array.from({ length: size }, (_, i) =>
     Array.from({ length: size }, (_, j) => (i + j) % size));
   const rows = shuffle([...Array(size).keys()]);
   const cols = shuffle([...Array(size).keys()]);
   const map  = shuffle([...Array(size).keys()]);
-  sq = rows.map(r => cols.map(c => map[sq[r][c]]));
+  sq = rows.map(r => cols.map(c => idMap[map[sq[r][c]]]));
   const all = shuffle([...Array(size * size).keys()]);
   const holeSet = new Set(all.slice(0, blanks));
   const fixedMap = Array.from({ length: size * size }, (_, i) => !holeSet.has(i));
@@ -632,7 +637,12 @@ function render(pIdx) {
   clueBox.style.display = mode === "clue" ? "flex" : "none";
 
   if (mode === "fill") {
-    const p = makeFillPuzzle(L.size, L.blanks);
+    // 6×6 以上每关随机挑 size 只动物（种子固定，同一题永远同一批）；小棋盘保持原有动物不变
+    const idMap = L.size >= 6
+      ? shuffle([...Array(ANIMALS.length).keys()]).slice(0, L.size)
+      : [...Array(L.size).keys()];
+    fillTray = idMap;
+    const p = makeFillPuzzle(L.size, L.blanks, idMap);
     solution = p.solution;
     fixed = p.fixedMap;
     board = Array.from({ length: L.size * L.size }, (_, i) => fixed[i] ? solution[Math.floor(i / L.size)][i % L.size] : -1);
@@ -653,7 +663,9 @@ function render(pIdx) {
   // 棋盘
   const cellPx = L.size === 3 ? "clamp(72px, 15vmin, 108px)"
                : L.size === 4 ? "clamp(56px, 12vmin, 88px)"
-               : "clamp(44px, 9.5vmin, 70px)";
+               : L.size === 5 ? "clamp(44px, 9.5vmin, 70px)"
+               : L.size === 6 ? "clamp(38px, 8vmin, 60px)"
+               : "clamp(34px, 7vmin, 54px)";
   boardEl.style.gridTemplateColumns = `repeat(${L.size}, ${cellPx})`;
   // 双保险：显式行高，防止空行/全空棋盘塌缩
   boardEl.style.gridAutoRows = cellPx;
@@ -670,7 +682,7 @@ function render(pIdx) {
 
   // 托盘
   trayEl.innerHTML = "";
-  const trayList = mode === "clue" ? trayIds : [...Array(L.size).keys()];
+  const trayList = mode === "clue" ? trayIds : fillTray;
   for (const a of trayList) {
     const t = document.createElement("div");
     t.className = "trayItem";
@@ -696,7 +708,7 @@ function updateStats() {
   $("#barInner").style.width = pct + "%";
   $("#percentText").textContent = pct + "%";
   $("#scorePill").textContent = `本题 ${currentScore} 分`;
-  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${Object.keys(LEVELS).filter(i => levelDone(+i) >= LEVELS[i].total).length} 个关卡 · v11`;
+  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${Object.keys(LEVELS).filter(i => levelDone(+i) >= LEVELS[i].total).length} 个关卡 · v12`;
   // 关卡按钮小字
   document.querySelectorAll(".lvBtn").forEach((b, i) => {
     const s = b.querySelector("small");
@@ -854,11 +866,18 @@ function updateTray() {
     const a = +t.dataset.animal;
     t.classList.toggle("pick", a === picked);
     t.classList.toggle("empty", counts[a] >= need);
+    // 这只动物已经放够数了 → 整项隐藏，不让灰按钮占地方
+    t.style.display = counts[a] >= need ? "none" : "";
     let b = t.querySelector(".badge");
     if (!b) { b = document.createElement("div"); b.className = "badge"; t.appendChild(b); }
     b.textContent = Math.max(0, need - counts[a]);
     b.style.display = counts[a] >= need ? "none" : "block";
   });
+  // 已隐藏的动物若还处于选中态，一并取消，避免"隐形选中"
+  if (picked >= 0 && counts[picked] >= need) {
+    picked = -1;
+    cellEls.forEach(c => c.classList.remove("selected-target"));
+  }
 }
 
 // ================= 交互 =================
@@ -914,6 +933,7 @@ function onCellClick(i) {
   }
 
   // 放置成功
+  const justPlaced = picked; // updateTray 可能在放满后重置 picked，先记住
   board[i] = picked;
   cellEls[i].innerHTML = "";
   cellEls[i].appendChild(makeAnimalImg(picked));
@@ -935,12 +955,12 @@ function onCellClick(i) {
         setHint("还有红色的线索哦，加油！");
       }
     } else {
-      setHint(`放好啦！${ANIMALS[picked].name}真棒～`, "good");
-      speak(`放好啦，${ANIMALS[picked].name}真棒`);
+      setHint(`放好啦！${ANIMALS[justPlaced].name}真棒～`, "good");
+      speak(`放好啦，${ANIMALS[justPlaced].name}真棒`);
     }
     checkWinClue();
   } else {
-    setHint(`放好啦！${ANIMALS[picked].name}真可爱～`);
+    setHint(`放好啦！${ANIMALS[justPlaced].name}真可爱～`);
     checkWinFill();
   }
 }
@@ -1004,7 +1024,7 @@ $("#reviewBtn").addEventListener("click", () => {
 $("#soundBtn").addEventListener("click", () => {
   soundOn = !soundOn;
   $("#soundBtn").textContent = soundOn ? "🔊 声音" : "🔇 静音";
-  if (!soundOn) { try { speechSynthesis.cancel(); } catch (e) {} }
+  if (!soundOn) { stopSpeak(); }
   else { playTone(660, .12, "sine"); speak("声音打开啦"); }
 });
 
@@ -1121,6 +1141,7 @@ function buildLevelBar() {
     b.dataset.lv = i;
     b.innerHTML = `${L.icon} ${L.label}<small>${levelDone(i)}/${L.total}</small>`;
     b.addEventListener("click", () => {
+      stopSpeak(); // 无论切到哪一关，先掐掉上一关的播报
       document.querySelectorAll(".lvBtn").forEach(x => x.classList.remove("active"));
       b.classList.add("active");
       level = i;
@@ -1153,18 +1174,26 @@ function playWinSound() {
 }
 
 // 2) 中文语音朗读（系统自带 TTS，无需下载音频）
+// speakToken：每次打断/新播报自增；延迟 60ms 后校验 token 再开口，
+// 解决快速切关时「cancel 后旧的还在播、新的播不上去」的浏览器怪癖
+let speakToken = 0;
+function stopSpeak() {
+  speakToken++;
+  try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
+}
 function speak(text) {
   if (!soundOn || !text) return;
   try {
     if (!window.speechSynthesis) return;
+    stopSpeak();
+    const my = speakToken;
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "zh-CN";
     u.rate = 0.92;
     u.pitch = 1.15;
     const zh = speechSynthesis.getVoices().find(v => /zh|Chinese|中文/i.test(v.lang + " " + v.name));
     if (zh) u.voice = zh;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
+    setTimeout(() => { if (my === speakToken) speechSynthesis.speak(u); }, 60);
   } catch (e) {}
 }
 if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => {};
