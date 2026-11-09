@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<title>小动物数独乐园 v14</title>
+<title>小动物数独乐园 v15</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { min-height: 100%; overflow-x: hidden; }
@@ -123,12 +123,14 @@
   }
   .cell.justPlaced { animation: dropIn .3s cubic-bezier(.2,1.6,.4,1); }
   .cell.hinted { box-shadow: inset 0 0 0 4px #ffd166; }
-  /* 右键/长按：棋盘上所有已放的小动物一起闪烁，方便数个数 */
+  /* 右键/长按：只闪烁并高亮「同一种」动物/障碍，方便数这一只放了几只 */
   .cell.flashAll { animation: flashPulse .55s ease-in-out 3; z-index: 2; }
   @keyframes flashPulse {
     0%, 100% { box-shadow: inset 0 0 0 0 rgba(255,183,3,0); transform: scale(1); }
     50%      { box-shadow: inset 0 0 0 7px #ffb703; transform: scale(1.07); background: #fff6d9; }
   }
+  .cell.spotlight { box-shadow: inset 0 0 0 4px #ff9f1c, 0 0 0 2px rgba(255,159,28,.35); background: #fff3d6; }
+  .trayItem.traySpot { box-shadow: 0 0 0 3px #ff9f1c, 0 4px 12px rgba(255,159,28,.35); }
   /* 划线提示：选中动物后，同行同列的空格打叉 */
   .cell.crossed { background: #fff1f3; }
   .cell.crossed::before, .cell.crossed::after {
@@ -259,7 +261,7 @@
     <span id="percentText">0%</span>
     <span id="scorePill">得分 100</span>
   </div>
-  <div id="totalText">总进度 0/244 · v14</div>
+  <div id="totalText">总进度 0/244 · v15</div>
   <div id="hintText">选一个小动物，点格子放进去；每行每列都不能重复哦！</div>
   <div id="clueBox"></div>
 </header>
@@ -407,6 +409,7 @@ let soundOn = true;
 let markHint = false;   // 划线提示开关：选中动物后同行同列空格打叉
 let suppressClick = false; // 长按闪烁后吞掉本次点击，避免误放
 let flashTimer = 0;
+let spotlightId = null; // 右键/长按正在查看的那一种动物（或障碍）
 // 顶部分类：fill=填格子 / clue=小侦探（含障碍侦探）
 let category = "fill";
 try { category = localStorage.getItem("kidsudoku_cat_v1") === "clue" ? "clue" : "fill"; } catch (e) {}
@@ -687,6 +690,7 @@ function render(pIdx) {
   mistakes = 0;
   currentScore = 100;
   justWon = false;
+  clearSpotlight(); // 换题/换关后不再保留上一题的高亮
 
   mode = L.mode;
   picked = -1;
@@ -739,7 +743,7 @@ function render(pIdx) {
     d.className = "cell" + (fixed[i] ? " fixed" : "");
     if (fixed[i]) d.appendChild(makeAnimalImg(board[i]));
     d.addEventListener("click", () => onCellClick(i));
-    bindFlashGesture(d);
+    bindFlashGesture(d, () => board[i]);
     boardEl.appendChild(d);
     cellEls.push(d);
   }
@@ -757,7 +761,7 @@ function render(pIdx) {
     nm.textContent = ANIMALS[a].name;
     t.appendChild(im); t.appendChild(nm);
     t.addEventListener("click", () => pickAnimal(a));
-    bindFlashGesture(t);
+    bindFlashGesture(t, () => a);
     trayEl.appendChild(t);
   }
   updateTray();
@@ -791,7 +795,7 @@ function updateStats() {
   $("#barInner").style.width = pct + "%";
   $("#percentText").textContent = pct + "%";
   $("#scorePill").textContent = `本题 ${currentScore} 分`;
-  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${Object.keys(LEVELS).filter(i => levelDone(+i) >= LEVELS[i].total).length} 个关卡 · v14`;
+  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${Object.keys(LEVELS).filter(i => levelDone(+i) >= LEVELS[i].total).length} 个关卡 · v15`;
   // 关卡按钮小字（分类过滤后不能按 DOM 顺序对齐，必须用 data-lv）
   document.querySelectorAll(".lvBtn").forEach(b => {
     const s = b.querySelector("small");
@@ -986,25 +990,70 @@ function updateMarks() {
 }
 
 // ================= 交互 =================
-// 右键（PC）/ 长按（手机）任一动物：棋盘上已填的动物全部闪烁一下，方便数数量
-function flashPlaced() {
-  const onBoard = [];
-  cellEls.forEach((el, i) => { if (board[i] >= 0) onBoard.push(el); });
-  onBoard.forEach(el => { el.classList.remove("flashAll"); void el.offsetWidth; el.classList.add("flashAll"); });
+// 右键（PC）/ 长按（手机）点哪一个，就只把「同一种」的格子闪一下并持续描边
+function clearSpotlight() {
   clearTimeout(flashTimer);
-  flashTimer = setTimeout(() => onBoard.forEach(el => el.classList.remove("flashAll")), 1800);
-  const mine = board.filter((v, i) => v >= 0 && !fixed[i]).length;
-  setHint(`棋盘上已经有 ${onBoard.length} 只小动物，其中你放了 ${mine} 只～`, "good");
+  spotlightId = null;
+  cellEls.forEach(el => el.classList.remove("flashAll", "spotlight"));
+  trayEl.querySelectorAll(".trayItem").forEach(t => t.classList.remove("traySpot"));
+}
+// 放置 / 拿回动物后刷新描边：新放的同种格子也亮起来，拿掉的格子熄灭
+function refreshSpotlight() {
+  if (spotlightId == null || !cellEls.length) return;
+  cellEls.forEach((el, i) => el.classList.toggle("spotlight", board[i] === spotlightId));
+}
+function flashPlaced(a) {
+  // 空格：若托盘里已选中一只，就查这一只；否则提示先选动物
+  if (a == null || a === -1) {
+    if (picked >= 0) return flashPlaced(picked);
+    clearSpotlight();
+    setHint("这个格子还空着呢～右键点小动物，就能看看它放了几只！");
+    playTone(320, .1, "sine");
+    return;
+  }
+  const name = thingName(a);
+  if (!name) return;
+  clearSpotlight();
+  spotlightId = a;
+  const idxs = [];
+  cellEls.forEach((el, i) => { if (board[i] === a) idxs.push(i); });
+  idxs.forEach(i => {
+    const el = cellEls[i];
+    el.classList.add("spotlight", "flashAll");
+    void el.offsetWidth; // 强制重排，连点同一种也能重新播放动画
+  });
+  trayEl.querySelectorAll(".trayItem").forEach(t =>
+    t.classList.toggle("traySpot", +t.dataset.animal === a));
+  flashTimer = setTimeout(() => idxs.forEach(i => {
+    if (cellEls[i]) cellEls[i].classList.remove("flashAll");
+  }), 1800);
+
+  const mine = idxs.filter(i => !fixed[i]).length;
+  let msg, voice;
+  if (a < 0) {
+    msg = `棋盘上有 ${idxs.length} 个${name}，它们占着的格子不能放动物哦～`;
+    voice = `${name}有${idxs.length}个`;
+  } else if (idxs.length === 0) {
+    msg = `「${name}」还没有放上去呢～`;
+    voice = `${name}还没有放`;
+  } else {
+    const need = mode === "clue" ? 1 : LEVELS[level].size;
+    const tail = idxs.length < need ? `，还差 ${need - idxs.length} 只` : "，放齐啦";
+    msg = `「${name}」在棋盘上有 ${idxs.length} 只，其中你放了 ${mine} 只${tail}～`;
+    voice = `${name}有${idxs.length}只`;
+  }
+  setHint(msg, "good");
+  speak(voice);
   playTone(780, .1, "sine");
 }
-function bindFlashGesture(el) {
-  el.addEventListener("contextmenu", e => { e.preventDefault(); flashPlaced(); });
+function bindFlashGesture(el, getId) {
+  el.addEventListener("contextmenu", e => { e.preventDefault(); flashPlaced(getId()); });
   let timer = null;
   const start = () => {
     timer = setTimeout(() => {
       timer = null; suppressClick = true;
       setTimeout(() => { suppressClick = false; }, 800);
-      flashPlaced();
+      flashPlaced(getId());
     }, 550);
   };
   const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
@@ -1048,6 +1097,7 @@ function onCellClick(i) {
   if (board[i] >= 0 && picked === -1) {
     board[i] = -1;
     cellEls[i].innerHTML = "";
+    refreshSpotlight();
     updateTray(); updateClueStatus();
     setHint("拿回去了，换一个试试！");
     playTone(300, .12, "triangle");
@@ -1073,6 +1123,7 @@ function onCellClick(i) {
   cellEls[i].innerHTML = "";
   cellEls[i].appendChild(makeAnimalImg(picked));
   cellEls[i].classList.add("justPlaced");
+  refreshSpotlight();
   setTimeout(() => cellEls[i] && cellEls[i].classList.remove("justPlaced"), 320);
   playTone(660, .1, "sine"); setTimeout(() => playTone(880, .12, "sine"), 90);
   updateTray();
