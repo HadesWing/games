@@ -19,7 +19,7 @@ const check = (n, c, x) => { console.log((c ? "PASS " : "FAIL ") + n + (x != nul
 
 (async () => {
   await delay(400);
-  check("版本 v14", /v14/.test(d.querySelector("#totalText").textContent));
+  check("版本 v15", /v15/.test(d.querySelector("#totalText").textContent));
   check("划线按钮默认关", /关/.test(d.querySelector("#markBtn").textContent));
 
   // ===== 划线提示开关 =====
@@ -69,18 +69,22 @@ const check = (n, c, x) => { console.log((c ? "PASS " : "FAIL ") + n + (x != nul
   check("关闭后叉清空", marked().length === 0, marked().length);
   click(d.querySelector("#markBtn")); // 再打开，方便后面测试
 
-  // ===== 右键闪烁：棋盘动物 =====
+  // ===== 右键闪烁：只高亮同一种动物 =====
   const animalCells = () => [...cells()].map((c, i) => get("board")[i] >= 0 ? i : -1).filter(i => i >= 0);
   const firstAnimal = animalCells()[0];
+  const sameKind = get("board")[firstAnimal];
+  const sameCells = [...cells()].map((c, i) => get("board")[i] === sameKind ? i : -1).filter(i => i >= 0);
   const ev = new w.MouseEvent("contextmenu", { bubbles: true, cancelable: true });
   cells()[firstAnimal].dispatchEvent(ev);
   check("右键阻止系统菜单", ev.defaultPrevented);
   const flashed = [...cells()].filter(c => c.classList.contains("flashAll")).length;
-  check("所有已填动物一起闪", flashed === animalCells().length, `${flashed}/${animalCells().length}`);
-  check("提示显示数量", /已经有 \d+ 只小动物/.test(d.querySelector("#hintText").textContent), d.querySelector("#hintText").textContent);
+  check("只有同一种动物闪烁", flashed === sameCells.length, `${flashed}/${sameCells.length}`);
+  check("其它动物不闪", [...cells()].every((c, i) => !c.classList.contains("flashAll") || get("board")[i] === sameKind));
+  check("提示显示这一种的数量", /在棋盘上有 \d+ 只/.test(d.querySelector("#hintText").textContent), d.querySelector("#hintText").textContent);
   check("空格不闪", [...cells()].every((c, i) => !c.classList.contains("flashAll") || get("board")[i] >= 0));
   await delay(1900);
-  check("闪烁自动结束", [...cells()].every(c => !c.classList.contains("flashAll")));
+  check("闪烁动画结束但描边保留", [...cells()].every(c => !c.classList.contains("flashAll"))
+    && [...cells()].filter(c => c.classList.contains("spotlight")).length === sameCells.length);
 
   // 右键托盘动物也有效
   const ev2 = new w.MouseEvent("contextmenu", { bubbles: true, cancelable: true });

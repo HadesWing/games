@@ -18,7 +18,7 @@ const check = (n, c, x) => { console.log((c ? "PASS " : "FAIL ") + n + (x != nul
 const btns = () => d.querySelectorAll(".lvBtn");
 
 setTimeout(() => {
-  check("版本 v14", /v14/.test(d.querySelector("#totalText").textContent), d.querySelector("#totalText").textContent);
+  check("版本 v15", /v15/.test(d.querySelector("#totalText").textContent), d.querySelector("#totalText").textContent);
   check("关卡数 = 14", btns().length === 14, btns().length);
   check("总题数 = 244", get("totalPuzzles()") === 244, get("totalPuzzles()"));
 
@@ -53,7 +53,7 @@ setTimeout(() => {
   click(btns()[7]);
   awaitMs(50);
   check("超级侦探: 棋盘 25 格", d.querySelectorAll(".cell").length === 25, d.querySelectorAll(".cell").length);
-  check("超级侦探: 有线索卡", d.querySelectorAll(".clueCard").length >= 5, d.querySelectorAll(".clueCard").length);
+  check("超级侦探: 有线索卡（最小线索集，数量不固定）", d.querySelectorAll(".clueCard").length >= 3, d.querySelectorAll(".clueCard").length);
   check("超级侦探: 托盘 5 只", d.querySelectorAll("#tray .trayItem").length === 5, d.querySelectorAll("#tray .trayItem").length);
   const pos5 = get("solutionPos");
   const ids5 = get("trayIds");
