@@ -12,3 +12,7 @@ audio/pinyin/*.import
 
 # 工具脚本缓存
 tools/__pycache__/
+
+# 切换分支时其它工程留下的本地残留（本分支不使用）
+dist/
+node_modules/
