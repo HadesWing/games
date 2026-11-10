@@ -153,6 +153,7 @@
     <div class="brand"><span class="dot"></span>弹幕猜词</div>
     <div class="pill">第 <b id="round">—</b> 局</div>
     <div class="pill">剩余 <b id="remain">—</b> s</div>
+    <div class="pill" id="engine" title="关联度打分引擎">语义引擎 · —</div>
     <div class="spacer"></div>
     <button id="btnBot" class="on">模拟弹幕 · 开</button>
     <button id="btnNext">换一题</button>
@@ -212,13 +213,19 @@ function colorOf(s) {
   if (s >= 90) return '#fe2c55'
   if (s >= 75) return '#ff7a45'
   if (s >= 60) return '#f0b429'
-  if (s >= 40) return '#5c6473'
-  return '#3a4150'
+  if (s >= 40) return '#9aa3b2'
+  return '#6d7686'
 }
 
 function render(s) {
   $('round').textContent = s.round
   $('remain').textContent = s.remain
+  if (s.engine) {
+    const e = s.engine
+    const short = String(e.model || '').split('/').pop().replace(/:latest$/, '')
+    $('engine').textContent = e.enabled ? `语义引擎 · ${short}` : '语义引擎 · 图谱模式'
+    $('engine').style.color = e.enabled ? 'var(--green, #3fb950)' : ''
+  }
   $('cat').textContent = s.category
   $('count').textContent = s.guessCount
 
