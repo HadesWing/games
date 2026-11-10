@@ -46,8 +46,9 @@ var busy := false
 var selected_sheng := ""
 var current: Dictionary = {}
 var lv := 1
-var blend_step := 0.46
-var reward_hold := 0.85
+# 真人录音每条约 0.9-1.1 秒，三段间隔与奖励停留都留足，避免下一题把上一段音切断
+var blend_step := 1.0
+var reward_hold := 1.3
 
 var prompt: Label
 var progress: Label
@@ -185,6 +186,7 @@ func _build_background() -> void:
 	home_btn.position = Vector2(1120, 12)
 	home_btn.size = Vector2(130, 48)
 	home_btn.pressed.connect(func() -> void:
+		PinyinData.stop_speech()
 		get_tree().change_scene_to_file("res://scenes/home.tscn"))
 	add_child(home_btn)
 
@@ -229,7 +231,7 @@ func _build_background() -> void:
 	add_child(yun_box)
 
 	var left_tag := Label.new()
-	left_tag.text = "声母"
+	left_tag.text = "声母 · 点一下听"
 	left_tag.position = Vector2(150, 232)
 	left_tag.size = Vector2(200, 38)
 	left_tag.add_theme_font_size_override("font_size", 28)
@@ -238,7 +240,7 @@ func _build_background() -> void:
 	add_child(left_tag)
 
 	var right_tag := Label.new()
-	right_tag.text = "韵母"
+	right_tag.text = "韵母 · 点一下听"
 	right_tag.position = Vector2(930, 232)
 	right_tag.size = Vector2(200, 38)
 	right_tag.add_theme_font_size_override("font_size", 28)
@@ -355,6 +357,7 @@ func _on_sheng_input(event: InputEvent, card: ShengCard) -> void:
 	if not event.pressed or event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	selected_sheng = card.letter
+	PinyinData.play_syllable(card.letter)
 	_refresh_selection()
 
 
@@ -363,6 +366,7 @@ func _on_yun_input(event: InputEvent, card: YunCard) -> void:
 		return
 	if not event.pressed or event.button_index != MOUSE_BUTTON_LEFT:
 		return
+	PinyinData.play_syllable(card.letter)
 	if selected_sheng == "":
 		_nudge(card, "先点左边的声母哦")
 		return
@@ -464,6 +468,7 @@ func _show_reward() -> void:
 # ---------------- 结算 ----------------
 
 func _finish() -> void:
+	PinyinData.stop_speech()
 	Sfx.win()
 	var score := score_of(first_try, ROUND_TARGETS)
 	var mode := "audio" if PinyinData.has_audio("a") else "text"
@@ -513,6 +518,7 @@ func _finish() -> void:
 	again.add_theme_font_size_override("font_size", 32)
 	again.custom_minimum_size = Vector2(220, 70)
 	again.pressed.connect(func() -> void:
+		PinyinData.stop_speech()
 		get_tree().reload_current_scene())
 	hb.add_child(again)
 
@@ -521,5 +527,6 @@ func _finish() -> void:
 	back.add_theme_font_size_override("font_size", 32)
 	back.custom_minimum_size = Vector2(220, 70)
 	back.pressed.connect(func() -> void:
+		PinyinData.stop_speech()
 		get_tree().change_scene_to_file("res://scenes/home.tscn"))
 	hb.add_child(back)

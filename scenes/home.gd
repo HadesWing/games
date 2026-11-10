@@ -8,6 +8,8 @@ var rest_overlay: Control
 
 
 func _ready() -> void:
+	# 回到主页统一掐掉上一段朗读，避免切场景后还拖着尾音
+	PinyinData.stop_speech()
 	Guard.need_rest.connect(_on_need_rest)
 	_build()
 

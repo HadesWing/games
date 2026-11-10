@@ -74,8 +74,18 @@ func _build_background() -> void:
 	home_btn.position = Vector2(1130, 12)
 	home_btn.size = Vector2(120, 48)
 	home_btn.pressed.connect(func() -> void:
+		PinyinData.stop_speech()
 		get_tree().change_scene_to_file("res://scenes/home.tscn"))
 	add_child(home_btn)
+
+	var replay_btn := Button.new()
+	replay_btn.text = "🔊 再听一次"
+	replay_btn.add_theme_font_size_override("font_size", 22)
+	replay_btn.position = Vector2(930, 12)
+	replay_btn.size = Vector2(180, 48)
+	replay_btn.pressed.connect(func() -> void:
+		PinyinData.play_syllable(current))
+	add_child(replay_btn)
 
 
 func _spawn_fish() -> void:
@@ -141,7 +151,7 @@ func _next_target() -> void:
 	progress.text = "第 %d / %d 个" % [t_index + 1, ROUND_TARGETS]
 	var heard := PinyinData.play_syllable(current)
 	if heard:
-		prompt.text = "听一听，钓哪条鱼？"
+		prompt.text = "听一听，钓哪条鱼？（点鱼也能听）"
 	else:
 		prompt.text = "钓「%s」" % current
 
@@ -151,7 +161,10 @@ func _on_fish_input(event: InputEvent, fish: Panel) -> void:
 		return
 	if not event.pressed or event.button_index != MOUSE_BUTTON_LEFT:
 		return
-	if str(fish.get_meta("letter")) == current:
+	# 点哪条鱼就读哪条鱼的音：听音辨形之外，孩子还能主动点读对比
+	var letter := str(fish.get_meta("letter"))
+	PinyinData.play_syllable(letter)
+	if letter == current:
 		_catch(fish)
 	else:
 		_miss(fish)
@@ -230,6 +243,7 @@ func _face_direction(fish: Panel, vx: float) -> void:
 
 
 func _finish() -> void:
+	PinyinData.stop_speech()
 	Sfx.win()
 	var score := roundf(float(first_try) / ROUND_TARGETS * 100.0)
 	var stars := Db.finish("fishing", score, {"mode": "audio" if PinyinData.has_audio("a") else "text"})
@@ -277,6 +291,7 @@ func _finish() -> void:
 	again.add_theme_font_size_override("font_size", 32)
 	again.custom_minimum_size = Vector2(220, 70)
 	again.pressed.connect(func() -> void:
+		PinyinData.stop_speech()
 		get_tree().reload_current_scene())
 	hb.add_child(again)
 
@@ -285,5 +300,6 @@ func _finish() -> void:
 	back.add_theme_font_size_override("font_size", 32)
 	back.custom_minimum_size = Vector2(220, 70)
 	back.pressed.connect(func() -> void:
+		PinyinData.stop_speech()
 		get_tree().change_scene_to_file("res://scenes/home.tscn"))
 	hb.add_child(back)
