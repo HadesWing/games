@@ -1,11 +1,12 @@
 {
   "name": "danmu-guess",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "弹幕猜词直播玩法 · 本地可玩原型（零依赖）",
+  "description": "弹幕猜词直播玩法 · 本地可玩原型（零依赖 + 可选本地 embedding）",
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
+    "bench": "node tools/bench.mjs",
     "collect": "node tools/collect.mjs",
     "analyze": "node tools/analyze.mjs",
     "sample": "node tools/sample.mjs"

@@ -2,3 +2,7 @@ data/
 node_modules/
 *.log
 preview*.png
+
+# 本地密钥与模型缓存，绝不入库
+.env
+.env.local
