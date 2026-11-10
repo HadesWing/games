@@ -1,3 +1,8 @@
 # Godot 4 自动生成目录
 .godot/
 *.tmp
+
+# 字体：本机自用的系统字体（含第三方版权）不入库，工程走 Godot 系统字体回退
+fonts/*.ttf
+fonts/*.otf
+fonts/*.import

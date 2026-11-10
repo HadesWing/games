@@ -2,6 +2,7 @@ extends Control
 ## 主页：游戏入口 + 等级显示 + 护眼休息页
 
 const FISHING_SCENE := "res://games/fishing/fishing.tscn"
+const FRIENDS_SCENE := "res://games/friends/friends.tscn"
 
 var rest_overlay: Control
 
@@ -44,9 +45,9 @@ func _build() -> void:
 	center.add_child(sub)
 
 	center.add_child(_spacer(20))
-	center.add_child(_game_button("拼音钓鱼", "fishing", true))
-	center.add_child(_game_button("找朋友（两拼拼读）", "friends", false))
-	center.add_child(_game_button("摘果子（四声测评）", "fruit", false))
+	center.add_child(_game_button("拼音钓鱼", "fishing", FISHING_SCENE, true))
+	center.add_child(_game_button("找朋友（两拼拼读）", "friends", FRIENDS_SCENE, true))
+	center.add_child(_game_button("摘果子（四声测评）", "fruit", "", false))
 
 	center.add_child(_spacer(30))
 
@@ -66,7 +67,7 @@ func _spacer(h: int) -> Control:
 	return s
 
 
-func _game_button(text: String, id: String, enabled: bool) -> Button:
+func _game_button(text: String, id: String, scene: String, enabled: bool) -> Button:
 	var lv := Db.lvl(id)
 	var b := Button.new()
 	if enabled:
@@ -78,7 +79,7 @@ func _game_button(text: String, id: String, enabled: bool) -> Button:
 	b.disabled = not enabled
 	if enabled:
 		b.pressed.connect(func() -> void:
-			get_tree().change_scene_to_file(FISHING_SCENE))
+			get_tree().change_scene_to_file(scene))
 	return b
 
 
