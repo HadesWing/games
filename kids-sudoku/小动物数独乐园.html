@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
-<title>小动物数独乐园 v15</title>
+<title>小动物数独乐园 v16</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { min-height: 100%; overflow-x: hidden; }
@@ -39,6 +39,10 @@
     transition: all .2s;
   }
   .lvBtn.active { background: #ffd166; color: #7a4b00; transform: scale(1.08); box-shadow: 0 4px 12px rgba(255,209,102,.5); }
+  /* 已全部通关的关卡：绿底 + ✅，一眼看出这一关已经毕业 */
+  .lvBtn.cleared:not(.active) { background: #e9fbf1; color: #2b7a55; box-shadow: 0 0 0 2px #8fdcb2 inset; }
+  .lvBtn.cleared:not(.active) small { color: #4ba377; }
+  .lvBtn.active.cleared { box-shadow: 0 4px 12px rgba(255,209,102,.5), 0 0 0 3px #35b37a inset; }
   #hintText {
     margin-top: 8px; min-height: 1.6em; font-size: clamp(15px, 2.8vmin, 20px);
     color: #5b7a99; font-weight: bold; text-align: center; padding: 0 12px;
@@ -261,7 +265,7 @@
     <span id="percentText">0%</span>
     <span id="scorePill">得分 100</span>
   </div>
-  <div id="totalText">总进度 0/244 · v15</div>
+  <div id="totalText">总进度 0/244 · v16</div>
   <div id="hintText">选一个小动物，点格子放进去；每行每列都不能重复哦！</div>
   <div id="clueBox"></div>
 </header>
@@ -395,6 +399,7 @@ function catOf(i) { return LEVELS[i].mode === "clue" ? "clue" : "fill"; }
 // ---------- 状态 ----------
 let level = 0;
 let puzzleIndex = 0;   // 当前是本章题库的第几题
+let reviewMode = false; // 本关已全部通关，再进来就是复习：不计进度、不计分
 let mistakes = 0;      // 本题错误次数
 let currentScore = 100; // 本题当前得分
 let mode = "fill";
@@ -462,8 +467,14 @@ function saveProgress() {
 }
 function levelDone(idx) {
   const m = progress[idx] || {};
-  return Object.keys(m).length;
+  // 只统计本题库范围内的题号：旧存档里若有越界题号，不会把进度撑成 13/12
+  let n = 0;
+  for (const p in m) if (+p >= 0 && +p < LEVELS[idx].total) n++;
+  return n;
 }
+function levelCleared(idx) { return levelDone(idx) >= LEVELS[idx].total; }
+function allCleared() { return LEVELS.every((_, i) => levelCleared(i)); }
+function clearedCount() { return LEVELS.filter((_, i) => levelCleared(i)).length; }
 function totalDone() {
   return LEVELS.reduce((s, _, i) => s + levelDone(i), 0);
 }
@@ -479,7 +490,7 @@ function recordDone(lv, pIdx, score) {
   progress[lv][pIdx] = old == null ? score : Math.max(old, score);
   saveProgress();
 }
-// 选下一题：优先未完成的题
+// 选下一题：优先本关未完成的题（本关已全部通关时由 goToNextLevel 接管）
 function nextPuzzleIndex(lv, excludeCur) {
   const L = LEVELS[lv];
   const todo = [];
@@ -488,6 +499,40 @@ function nextPuzzleIndex(lv, excludeCur) {
   const cand = pool.filter(i => i !== excludeCur);
   const use = cand.length ? cand : pool;
   return use[Math.floor(Math.random() * use.length)];
+}
+// 本关通关后：找下一个还有题没做完的关卡（优先同一大类，再跨类），全通关返回 -1
+function nextOpenLevel(fromLv) {
+  const cat = catOf(fromLv);
+  for (let k = 1; k < LEVELS.length; k++) {
+    const i = (fromLv + k) % LEVELS.length;
+    if (catOf(i) === cat && !levelCleared(i)) return i;
+  }
+  for (let i = 0; i < LEVELS.length; i++) if (!levelCleared(i)) return i;
+  return -1;
+}
+function gotoLevel(i, note) {
+  level = i;
+  category = catOf(i);
+  lastLevel[category] = i;
+  syncCatBar();
+  buildLevelBar();
+  render(nextPuzzleIndex(i, -1));
+  const m = note || `现在玩${LEVELS[i].label}～`;
+  setHint(m, "good");
+  speak(m);
+  playTone(660, .12, "sine");
+}
+function goToNextLevel() {
+  const nxt = nextOpenLevel(level);
+  if (nxt < 0) {
+    // 全部关卡都毕业了，才允许自由复习换题（进度不变）
+    render(nextPuzzleIndex(level, puzzleIndex));
+    const m = "🎊 所有关卡都通关啦！现在是自由复习，随便再玩一题吧～";
+    setHint(m, "good"); speak(m);
+    return false;
+  }
+  gotoLevel(nxt, `🎉 这一关全部通关啦！带你去 ${LEVELS[nxt].label}～`);
+  return true;
 }
 
 // ================= 出题：填空数独 =================
@@ -690,6 +735,7 @@ function render(pIdx) {
   mistakes = 0;
   currentScore = 100;
   justWon = false;
+  reviewMode = levelCleared(level); // 进关时本关已全通关 → 复习模式
   clearSpotlight(); // 换题/换关后不再保留上一题的高亮
 
   mode = L.mode;
@@ -766,6 +812,7 @@ function render(pIdx) {
   }
   updateTray();
   updateStats();
+  if (reviewMode) setHint(`✅ ${L.label} 已全部通关，现在是复习时间，进度不会再变～`, "good");
 }
 
 function catTotal(cat) {
@@ -791,16 +838,18 @@ function updateStats() {
   const L = LEVELS[level];
   const done = levelDone(level);
   const pct = Math.round(done / L.total * 100);
-  $("#statText").textContent = `${L.label} 已完成 ${done}/${L.total}`;
+  $("#statText").textContent = `${L.label} ${reviewMode ? "✅ 已通关 · 复习" : "已完成"} ${done}/${L.total}`;
   $("#barInner").style.width = pct + "%";
   $("#percentText").textContent = pct + "%";
   $("#scorePill").textContent = `本题 ${currentScore} 分`;
-  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${Object.keys(LEVELS).filter(i => levelDone(+i) >= LEVELS[i].total).length} 个关卡 · v15`;
+  $("#totalText").textContent = `总进度 ${totalDone()}/${totalPuzzles()} 题 · 已通关 ${clearedCount()}/${LEVELS.length} 关 · v16`;
   // 关卡按钮小字（分类过滤后不能按 DOM 顺序对齐，必须用 data-lv）
   document.querySelectorAll(".lvBtn").forEach(b => {
     const s = b.querySelector("small");
     const i = +b.dataset.lv;
-    if (s) s.textContent = `${levelDone(i)}/${LEVELS[i].total}`;
+    const doneLv = levelCleared(i);
+    b.classList.toggle("cleared", doneLv);
+    if (s) s.textContent = `${doneLv ? "✅ " : ""}${levelDone(i)}/${LEVELS[i].total}`;
   });
   syncCatBar();
 }
@@ -1190,14 +1239,15 @@ $("#clearBtn").addEventListener("click", () => {
 });
 
 $("#newBtn").addEventListener("click", () => {
-  render(nextPuzzleIndex(level, puzzleIndex));
   playTone(520, .12, "sine");
-  const L = LEVELS[level];
-  if (levelDone(level) >= L.total) setHint("本关全部通关啦！再来一题巩固一下～", "good");
+  // 本关已经 12/12（或其它关满额）就不再重复抽旧题，直接去下一关
+  if (levelCleared(level)) { goToNextLevel(); return; }
+  render(nextPuzzleIndex(level, puzzleIndex));
 });
 $("#againBtn").addEventListener("click", () => {
   $("#celebrate").classList.remove("show");
-  render(nextPuzzleIndex(level, puzzleIndex));
+  if (levelCleared(level)) goToNextLevel();
+  else render(nextPuzzleIndex(level, puzzleIndex));
 });
 // 回看棋盘：关掉弹层留在当前题，对照自己的做法
 $("#reviewBtn").addEventListener("click", () => {
@@ -1237,12 +1287,15 @@ $("#markBtn").addEventListener("click", () => {
 syncMarkBtn();
 
 // ================= 📊 我的：进度统计 =================
+// 只统计本题库范围内的题号，越界的旧存档不计入星数和进度
+function validPuzzle(lv, p) { return !!LEVELS[lv] && +p >= 0 && +p < LEVELS[lv].total; }
 function buildStats() {
   let stars = 0;
-  for (const lv in progress) for (const p in progress[lv]) if (progress[lv][p] === 100) stars++;
-  const cleared = LEVELS.filter((_, i) => levelDone(i) >= LEVELS[i].total).length;
+  for (const lv in progress) for (const p in progress[lv])
+    if (validPuzzle(lv, p) && progress[lv][p] === 100) stars++;
+  const cleared = clearedCount();
   $("#statsSummary").textContent =
-    `总进度 ${totalDone()}/${totalPuzzles()} 题 · 满分 ⭐×${stars} · 已通关 ${cleared} 个关卡`;
+    `总进度 ${totalDone()}/${totalPuzzles()} 题 · 满分 ⭐×${stars} · 已通关 ${cleared}/${LEVELS.length} 个关卡`;
   const list = $("#statsList");
   list.innerHTML = "";
   [["fill", "🧩 填格子"], ["clue", "🔍 小侦探"]].forEach(([cat, title]) => {
@@ -1255,12 +1308,12 @@ function buildStats() {
       const d = levelDone(i);
       let s = 0;
       const m = progress[i] || {};
-      for (const p in m) if (m[p] === 100) s++;
+      for (const p in m) if (validPuzzle(i, p) && m[p] === 100) s++;
       const pct = Math.round(d / L.total * 100);
       const row = document.createElement("div");
       row.className = "statRow";
       row.innerHTML =
-        `<span style="min-width:7.5em">${L.icon} ${L.label}</span>` +
+        `<span style="min-width:7.5em">${levelCleared(i) ? "✅ " : ""}${L.icon} ${L.label}</span>` +
         `<div class="barOuter"><div class="barInner" style="width:${pct}%"></div></div>` +
         `<span>${d}/${L.total}</span>` +
         `<span class="stars100">${s ? "⭐×" + s : ""}</span>` +
@@ -1353,10 +1406,11 @@ function buildLevelBar() {
   bar.innerHTML = "";
   LEVELS.forEach((L, i) => {
     const b = document.createElement("button");
-    b.className = "lvBtn" + (i === level ? " active" : "");
+    const doneLv = levelCleared(i);
+    b.className = "lvBtn" + (i === level ? " active" : "") + (doneLv ? " cleared" : "");
     b.dataset.lv = i;
     b.dataset.cat = catOf(i);
-    b.innerHTML = `${L.icon} ${L.label}<small>${levelDone(i)}/${L.total}</small>`;
+    b.innerHTML = `${L.icon} ${L.label}<small>${doneLv ? "✅ " : ""}${levelDone(i)}/${L.total}</small>`;
     b.addEventListener("click", () => {
       stopSpeak(); // 无论切到哪一关，先掐掉上一关的播报
       document.querySelectorAll(".lvBtn").forEach(x => x.classList.remove("active"));
@@ -1365,7 +1419,8 @@ function buildLevelBar() {
       lastLevel[category] = i;
       render(nextPuzzleIndex(i, -1));
       playTone(520, .12, "sine");
-      if (L.mode === "clue") speak("小侦探时间！读一读线索卡，帮小动物们找到位置");
+      if (levelCleared(i)) speak("这一关已经全部通关啦，可以随便复习一下");
+      else if (L.mode === "clue") speak("小侦探时间！读一读线索卡，帮小动物们找到位置");
     });
     bar.appendChild(b);
   });
@@ -1382,6 +1437,12 @@ document.querySelectorAll(".catBtn").forEach(btn => {
     const remembered = lastLevel[c];
     level = (remembered != null && LEVELS[remembered] && catOf(remembered) === c)
       ? remembered : LEVELS.findIndex((_, i) => catOf(i) === c);
+    // 记住的那一关若已通关，自动去这一类里还有题的关
+    if (levelCleared(level)) {
+      const open = LEVELS.findIndex((_, i) => catOf(i) === c && !levelCleared(i));
+      if (open >= 0) level = open;
+    }
+    lastLevel[c] = level;
     buildLevelBar();
     render(nextPuzzleIndex(level, -1));
     playTone(560, .12, "sine");
@@ -1442,14 +1503,20 @@ function win() {
   playWinSound();
   // 回看棋盘时，绿色呼吸框标出玩家自己填的格子（题目原有的格子有 fixed 标记）
   cellEls.forEach((el, i) => { if (!fixed[i]) el.classList.add("mine"); });
-  recordDone(level, puzzleIndex, currentScore);
+  // 复习模式下通关不写存档：题数、分数都不会变
+  if (!reviewMode) recordDone(level, puzzleIndex, currentScore);
   updateStats();
-  $("#winScore").textContent = currentScore === 100
+  const cleared = levelCleared(level);
+  $("#winScore").textContent = (currentScore === 100
     ? `本题 100 分 · 满分！🏅`
-    : `本题 ${currentScore} 分`;
+    : `本题 ${currentScore} 分`) + (reviewMode ? " · 复习不计分" : "");
   $("#winProg").textContent =
-    `本关已完成 ${levelDone(level)}/${LEVELS[level].total} · 总进度 ${totalDone()}/${totalPuzzles()}`
+    `本关已完成 ${levelDone(level)}/${LEVELS[level].total} · 总进度 ${totalDone()}/${totalPuzzles()} 题`
+    + (cleared ? " · 🎉 本关全部通关！" : "")
     + (totalDone() >= totalPuzzles() ? " · 🎊 全部关卡通关！" : "");
+  $("#againBtn").textContent = cleared
+    ? (allCleared() ? "🎊 全部通关 · 自由复习" : "🎉 本关通关 · 下一关 →")
+    : "下一题 🎈";
   speak(currentScore === 100 ? "满分！你真棒！" : `你真棒！本题${currentScore}分`);
   $("#celebrate").classList.add("show");
   const colors = ["#ff6f91", "#ffd166", "#a8e6cf", "#7fd8ff", "#c9a7ff"];
@@ -1467,6 +1534,11 @@ function win() {
 
 // 初次打开：如果上次停留在「小侦探」分类，就恢复到那边的关卡
 if (catOf(level) !== category) level = LEVELS.findIndex((_, i) => catOf(i) === category);
+// 上次停在一关已全通关的关，就自动进到还有题可玩的关
+if (levelCleared(level)) {
+  const open = LEVELS.findIndex((_, i) => catOf(i) === category && !levelCleared(i));
+  if (open >= 0) level = open;
+}
 lastLevel[category] = level;
 buildLevelBar();
 render();
