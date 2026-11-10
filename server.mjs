@@ -109,16 +109,17 @@ function newRound() {
 }
 
 // 后台复核：本地大模型给出的关联度和 embedding 差得多时，直接修正榜单上这一条
+// 注意这里复用完整的三路打分（含字面与读音），而不是单取模型的分：
+// 模型会漏判谐音（「衣巾」对「衣襟」它只给 60），结构证据必须能纠正它
 async function refineScore(entry, word, answer) {
   if (!judge.isReady()) return
   try {
-    const v = await judge.judgeWithBudget(word, answer)
-    if (v == null) return
+    const r = await score(word, answer)
     if (state.answer !== answer) return // 已经换局，丢弃
     if (!state.board.includes(entry)) return
-    const next = Math.min(97, Math.max(3, Math.round(v * 10) / 10))
-    if (Math.abs(next - entry.score) < 1) return
-    entry.score = next
+    if (Math.abs(r.score - entry.score) < 1 && r.reason === entry.reason) return
+    entry.score = r.score
+    entry.reason = r.reason
     entry.refined = true
     state.board.sort((x, y) => y.score - x.score || x.at - y.at)
     broadcast()
@@ -127,7 +128,8 @@ async function refineScore(entry, word, answer) {
   }
 }
 
-async function submitGuess(user, text) {  if (state.status !== 'playing') return { ok: false, reason: 'round-over' }
+async function submitGuess(user, text) {
+  if (state.status !== 'playing') return { ok: false, reason: 'round-over' }
   const word = String(text).trim().slice(0, 8)
   if (!word) return { ok: false, reason: 'empty' }
 
@@ -143,9 +145,10 @@ async function submitGuess(user, text) {  if (state.status !== 'playing') return
 
   let s
   let hit
+  let reason = ''
   try {
-    // judge:false → 只取 embedding 分，毫秒级返回；精排在后台补
-    ;({ score: s, hit } = await score(word, answer, { judge: false }))
+    // judge:false → 只取 embedding + 字面 + 读音，毫秒级返回；精排在后台补
+    ;({ score: s, hit, reason } = await score(word, answer, { judge: false }))
   } finally {
     state.pending.delete(word)
   }
@@ -153,7 +156,7 @@ async function submitGuess(user, text) {  if (state.status !== 'playing') return
   // 算分期间已经换局了，这条结果作废，否则会污染下一局的榜单
   if (roundNo !== state.round) return { ok: false, reason: 'round-changed' }
 
-  const entry = { user, word, score: s, hit, at: Date.now() }
+  const entry = { user, word, score: s, hit, reason, at: Date.now() }
   state.board.push(entry)
   state.board.sort((x, y) => y.score - x.score || x.at - y.at)
   if (state.board.length > 40) state.board.length = 40
