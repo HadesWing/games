@@ -43,6 +43,12 @@ jobs:
           ref: visual-detective
           path: src/visual-detective
 
+      - name: 取拼音乐园（pinyin）
+        uses: actions/checkout@v4
+        with:
+          ref: pinyin
+          path: src/pinyin
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -58,10 +64,12 @@ jobs:
       - name: 组装站点
         run: |
           set -e
-          mkdir -p _site/earth _site/kids-sudoku _site/visual-detective
+          mkdir -p _site/earth _site/kids-sudoku _site/visual-detective _site/pinyin
           cp src/main/index.html _site/index.html
           touch _site/.nojekyll
           cp src/earth/dist/index.html _site/earth/index.html
+          # pinyin 的 web/index.html 已内嵌 75 条真人录音，单文件直接拷贝即可
+          cp src/pinyin/web/index.html _site/pinyin/index.html
 
           # 数独分支早期版本是"earth 根目录 + kids-sudoku/ 子目录"，这里兼容两种布局
           if [ -f "src/kids-sudoku/kids-sudoku/小动物数独乐园.html" ]; then
