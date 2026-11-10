@@ -18,7 +18,7 @@ const check = (n, c, x) => { console.log((c ? "PASS " : "FAIL ") + n + (x != nul
 const btns = () => d.querySelectorAll(".lvBtn");
 
 setTimeout(() => {
-  check("版本 v15", /v15/.test(d.querySelector("#totalText").textContent), d.querySelector("#totalText").textContent);
+  check("版本 v16", /v16/.test(d.querySelector("#totalText").textContent), d.querySelector("#totalText").textContent);
   check("关卡数 = 14", btns().length === 14, btns().length);
   check("总题数 = 244", get("totalPuzzles()") === 244, get("totalPuzzles()"));
 

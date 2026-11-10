@@ -20,7 +20,7 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {
   await delay(400);
-  check("版本 v15", /v15/.test(d.querySelector("#totalText").textContent));
+  check("版本 v16", /v16/.test(d.querySelector("#totalText").textContent));
   check("14 个关卡", btns().length === 14, btns().length);
   check("244 题", get("totalPuzzles()") === 244, get("totalPuzzles()"));
 

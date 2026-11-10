@@ -23,7 +23,7 @@ const check = (n, c, x) => { console.log((c ? "PASS " : "FAIL ") + n + (x != nul
 
 (async () => {
   await delay(400);
-  check("版本 v15", /v15/.test(d.querySelector("#totalText").textContent));
+  check("版本 v16", /v16/.test(d.querySelector("#totalText").textContent));
 
   click(btns()[8]);            // 大师 6×6：动物多、空格多
   await delay(60);
