@@ -6,3 +6,9 @@
 fonts/*.ttf
 fonts/*.otf
 fonts/*.import
+
+# 编辑器为 mp3 生成的导入产物：音频按纯数据文件读取，无需提交
+audio/pinyin/*.import
+
+# 工具脚本缓存
+tools/__pycache__/
