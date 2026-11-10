@@ -37,15 +37,18 @@
   .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px}
 
   .puzzle{display:flex; flex-direction:column}
+  .chips{display:flex; gap:8px; flex-wrap:wrap}
   .tag{
     display:inline-block; align-self:flex-start; font-size:11px; color:var(--cyan);
     border:1px solid rgba(37,244,238,.35); background:rgba(37,244,238,.08);
     padding:3px 9px; border-radius:6px; letter-spacing:.5px;
   }
-  .cat{font-size:34px; font-weight:500; margin-top:18px; letter-spacing:2px}
-  .cat small{display:block; font-size:12px; font-weight:400; color:var(--dim); letter-spacing:0; margin-top:6px}
+  /* 分类只是提示，不是题目本身 —— 字号必须明显小于答案槽位，
+     否则观众会把「数码」当成答案读，然后疑惑冰箱怎么成了数码 */
+  .tag.cat{color:var(--muted); border-color:var(--line); background:#191d25}
+  .tag.cat b{color:var(--text); font-weight:500}
 
-  .hints{margin-top:24px; flex:1; display:flex; flex-direction:column; min-height:0}
+  .hints{margin-top:22px; display:flex; flex-direction:column; min-height:0}
   .hints-head{font-size:12px; color:var(--dim); margin-bottom:9px; letter-spacing:.5px}
   .hints-head b{color:var(--cyan); font-weight:500}
   #hintList{list-style:none; display:flex; flex-direction:column; gap:7px}
@@ -58,14 +61,14 @@
   #btnHint[hidden]{display:none}
 
   .answer{
-    margin-top:auto; margin-bottom:14px; font-size:40px; font-weight:500; letter-spacing:6px;
-    color:#2c323d; transition:.25s; min-height:56px;
+    margin-top:20px; margin-bottom:4px; font-size:46px; font-weight:500; letter-spacing:8px;
+    color:#39414f; transition:.25s; min-height:58px; line-height:1.15;
   }
   .answer.reveal{color:var(--red); letter-spacing:8px; text-shadow:0 0 24px rgba(254,44,85,.45)}
 
-  .progress{height:4px; border-radius:2px; background:#22262f; overflow:hidden; margin-bottom:12px}
+  .progress{height:4px; border-radius:2px; background:#22262f; overflow:hidden; margin:18px 0 12px}
   .progress i{display:block; height:100%; width:100%; background:linear-gradient(90deg,var(--red),#ff7a45); transition:width .9s linear}
-  .meta{display:flex; justify-content:space-between; font-size:12px; color:var(--dim)}
+  .meta{display:flex; justify-content:space-between; font-size:12px; color:var(--dim); margin-top:auto}
   .meta b{color:var(--muted); font-weight:500}
 
   .board{display:flex; flex-direction:column; min-height:0}
@@ -93,6 +96,11 @@
   .bar i{display:block; height:100%; border-radius:3px; transition:width .4s ease}
   .pct{font-size:13px; text-align:right; font-variant-numeric:tabular-nums; color:var(--muted)}
   .user{font-size:12px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right}
+  .user .tag{
+    display:inline-block; margin-left:5px; padding:0 4px; border-radius:3px;
+    font-size:10px; line-height:14px; color:#7d8798; background:#22262f;
+    border:1px solid #2b313d; vertical-align:1px;
+  }
   .empty{color:var(--dim); font-size:13px; padding:26px 8px; text-align:center; line-height:1.9}
 
   footer{flex:none; display:flex; align-items:center; gap:14px}
@@ -124,8 +132,7 @@
     main{grid-template-columns:1fr; grid-template-rows:auto 1fr}
     .row{grid-template-columns:24px 88px 1fr 58px}
     .row .user{display:none}
-    .cat{font-size:26px; margin-top:10px}
-    .answer{font-size:30px; letter-spacing:4px}
+    .answer{font-size:34px; letter-spacing:6px}
   }
 
   /* OBS 叠层模式：背景透明、隐藏调试用的输入框和按钮、高度自适应内容 */
@@ -139,8 +146,7 @@
 
   @media (orientation: portrait){
     body.overlay main{grid-template-columns:1fr; gap:10px}
-    body.overlay .cat{font-size:30px; margin-top:10px}
-    body.overlay .answer{font-size:34px; margin-top:16px; margin-bottom:12px; min-height:auto}
+    body.overlay .answer{font-size:38px; margin-top:14px; margin-bottom:10px; min-height:auto}
     body.overlay .row{padding:12px 6px}
     body.overlay .word{font-size:17px}
     body.overlay .pct{font-size:14px}
@@ -155,14 +161,18 @@
     <div class="pill">剩余 <b id="remain">—</b> s</div>
     <div class="pill" id="engine" title="关联度打分引擎">语义引擎 · —</div>
     <div class="spacer"></div>
-    <button id="btnBot" class="on">模拟弹幕 · 开</button>
+    <button id="btnBot">模拟弹幕 · 关</button>
     <button id="btnNext">换一题</button>
   </header>
 
   <main>
     <section class="card puzzle">
-      <div class="tag">名词 · 1–3 字</div>
-      <div class="cat"><span id="cat">—</span><small>本局分类</small></div>
+      <div class="chips">
+        <span class="tag">名词 · <b id="charN">2</b> 字</span>
+        <span class="tag cat">分类 · <b id="cat">—</b></span>
+      </div>
+
+      <div class="answer" id="answerBox">? ?</div>
 
       <div class="hints">
         <div class="hints-head">提示 <b id="hintN">1</b> / 3 已解锁</div>
@@ -170,7 +180,6 @@
         <button id="btnHint">解锁下一条</button>
       </div>
 
-      <div class="answer" id="answerBox">? ? ?</div>
       <div class="progress"><i id="prog"></i></div>
       <div class="meta">
         <span>已猜 <b id="count">0</b> 次</span>
@@ -180,7 +189,7 @@
 
     <section class="card board">
       <div class="board-head">关联度 TOP 12 <span id="hintNote">分数越高越接近答案，100 分即猜中</span></div>
-      <ol id="board"><li class="empty">还没有人猜……<br>在下面输入 1–3 个字的词试试</li></ol>
+      <ol id="board"><li class="empty">还没有人猜……<br>在下面输入 1–3 个字的词，或点右上角「模拟弹幕」让机器人陪演</li></ol>
     </section>
   </main>
 
@@ -200,9 +209,10 @@
 <script>
 const $ = (id) => document.getElementById(id)
 const boardEl = $('board')
+const hintList = $('hintList')
 let lastStatus = 'playing'
 let lastRound = -1
-let autopilot = true
+let autopilot = null // 以服务端为准，避免刷新后按钮和实际状态不一致
 
 // ?overlay=1 → OBS 叠层模式：透明背景，隐藏输入框和调试按钮
 if (new URLSearchParams(location.search).get('overlay') === '1') {
@@ -230,20 +240,38 @@ function render(s) {
   $('count').textContent = s.guessCount
 
   $('hintN').textContent = s.hintOpen
-  $('hintList').innerHTML = s.hints
-    .map((h, i) => (i < s.hintOpen ? `<li>${esc(h)}</li>` : '<li class="lock">· · ·</li>'))
-    .join('')
+  // 提示列表只在「内容或解锁进度变化」时重建。
+  // 之前每秒一次 broadcast 都整体重写 innerHTML，li 上的 in 动画每秒重播一次，
+  // 未解锁那行的「· · ·」就会一直闪。
+  const hintSig = s.hintOpen + '|' + s.hints.join('|')
+  if (hintList.dataset.sig !== hintSig) {
+    hintList.innerHTML = s.hints
+      .map((h, i) => (i < s.hintOpen ? `<li>${esc(h)}</li>` : '<li class="lock">· · ·</li>'))
+      .join('')
+    hintList.dataset.sig = hintSig
+  }
   $('btnHint').hidden = s.hintOpen >= s.hints.length
   $('prog').style.width = (s.remain / s.total * 100).toFixed(1) + '%'
 
   const revealed = s.status === 'revealed'
-  $('answerBox').textContent = revealed ? s.answer : '? ? ?'
+  const n = s.len || [...(s.answer || '')].length || 2
+  $('charN').textContent = n
+  $('answerBox').textContent = revealed ? [...s.answer].join(' ') : Array(n).fill('?').join(' ')
   $('answerBox').classList.toggle('reveal', revealed)
   $('stateText').textContent = revealed ? '已揭晓' : '进行中'
 
   if (s.round !== lastRound) {
     lastRound = s.round
-    boardEl.innerHTML = '<li class="empty">还没有人猜……<br>在下面输入 1–3 个字的词试试</li>'
+    boardEl.innerHTML = EMPTY_HTML
+    boardEl.dataset.sig = ''
+  }
+
+  // 模拟弹幕开关以服务端状态为准：刷新页面、换标签页都不会再出现
+  // 「机器人还在猜，但按钮显示已关」这种对不上的情况
+  if (autopilot !== s.autopilot) {
+    autopilot = s.autopilot
+    $('btnBot').classList.toggle('on', autopilot)
+    $('btnBot').textContent = '模拟弹幕 · ' + (autopilot ? '开' : '关')
   }
 
   if (!s.board.length) return
@@ -256,7 +284,7 @@ function render(s) {
       <span class="word" style="${e.hit ? 'color:' + c : ''}">${esc(e.word)}</span>
       <span class="bar"><i style="width:${e.score}%;background:${c}"></i></span>
       <span class="pct" style="color:${c}">${e.score.toFixed(1)}%</span>
-      <span class="user">${esc(e.user)}</span>
+      <span class="user">${esc(e.user)}${e.bot ? '<i class="tag">模拟</i>' : ''}</span>
     </li>`
   }).join('')
   boardEl.dataset.words = s.board.map((e) => e.word).join('|')
@@ -273,6 +301,7 @@ function render(s) {
 }
 
 const esc = (t) => String(t).replace(/[&<>"]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]))
+const EMPTY_HTML = '<li class="empty">还没有人猜……<br>在下面输入 1–3 个字的词，或点右上角「模拟弹幕」让机器人陪演</li>'
 
 let toastTimer
 function toast(msg, hit) {
@@ -307,13 +336,11 @@ $('btnNext').onclick = () => fetch('/api/next', { method: 'POST' })
 $('btnHint').onclick = () => fetch('/api/hint', { method: 'POST' })
 
 $('btnBot').onclick = async () => {
-  autopilot = !autopilot
-  $('btnBot').classList.toggle('on', autopilot)
-  $('btnBot').textContent = '模拟弹幕 · ' + (autopilot ? '开' : '关')
+  const next = !autopilot
   await fetch('/api/autopilot', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ on: autopilot }),
+    body: JSON.stringify({ on: next }),
   })
 }
 </script>
