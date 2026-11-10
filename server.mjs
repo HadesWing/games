@@ -8,7 +8,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { score, warmup, engineInfo } from './lib/score.mjs'
 import * as judge from './lib/judge.mjs'
-import { ANSWER_POOL, NOISE_GUESSES, FAKE_USERS } from './lib/lexicon.mjs'
+import { ANSWER_POOL, NOISE_GUESSES, FAKE_USERS, INDEX } from './lib/lexicon.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env.PORT || 8830)
@@ -45,10 +45,13 @@ const state = {
 
 function makeHints(answer, category) {
   const cs = [...answer]
+  // 2 字题不能给「第 2 个字是 X」——那等于把答案念出来。
+  // 第三提示改成同类的细分类（配件 / 大家电 / 主食），既收窄范围又不泄题。
+  const cluster = INDEX.get(answer)?.cluster || category
   return [
     `${cs.length} 个字，属于「${category}」`,
     `第 1 个字是「${cs[0]}」`,
-    `第 2 个字是「${cs[1] || '?'}」，最后一个字是「${cs[cs.length - 1]}」`,
+    cs.length >= 3 ? `第 2 个字是「${cs[1]}」` : `它属于「${cluster}」这一类`,
   ]
 }
 
