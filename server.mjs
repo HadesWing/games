@@ -6,7 +6,8 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { score } from './lib/score.mjs'
+import { score, warmup, engineInfo } from './lib/score.mjs'
+import * as judge from './lib/judge.mjs'
 import { ANSWER_POOL, NOISE_GUESSES, FAKE_USERS } from './lib/lexicon.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -34,6 +35,7 @@ const state = {
   endsAt: 0,
   status: 'playing', // playing | revealed
   board: [], // { user, word, score, hit, at }
+  pending: new Set(), // 正在算分的词，防止并发时同一个词被加两次
   guessCount: 0,
   autopilot: true,
   hints: [],
@@ -84,6 +86,7 @@ function snapshot() {
     autopilot: state.autopilot,
     hints: state.hints,
     hintOpen: state.hintOpen,
+    engine: engineInfo(),
     board: dedup.slice(0, 12),
     history: state.history.slice(-5).reverse(),
   }
@@ -98,28 +101,66 @@ function newRound() {
   state.endsAt = state.startedAt + ROUND_MS
   state.status = 'playing'
   state.board = []
+  state.pending.clear()
   state.guessCount = 0
   state.hints = makeHints(item.answer, item.category)
   state.hintOpen = 1
   broadcast()
 }
 
-function submitGuess(user, text) {
-  if (state.status !== 'playing') return { ok: false, reason: 'round-over' }
+// 后台复核：本地大模型给出的关联度和 embedding 差得多时，直接修正榜单上这一条
+async function refineScore(entry, word, answer) {
+  if (!judge.isReady()) return
+  try {
+    const v = await judge.judgeWithBudget(word, answer)
+    if (v == null) return
+    if (state.answer !== answer) return // 已经换局，丢弃
+    if (!state.board.includes(entry)) return
+    const next = Math.min(97, Math.max(3, Math.round(v * 10) / 10))
+    if (Math.abs(next - entry.score) < 1) return
+    entry.score = next
+    entry.refined = true
+    state.board.sort((x, y) => y.score - x.score || x.at - y.at)
+    broadcast()
+  } catch {
+    // 复核失败就保留 embedding 分，不影响游戏
+  }
+}
+
+async function submitGuess(user, text) {  if (state.status !== 'playing') return { ok: false, reason: 'round-over' }
   const word = String(text).trim().slice(0, 8)
   if (!word) return { ok: false, reason: 'empty' }
-  state.guessCount += 1
 
   // 同一个词本局只留一条（不管谁猜的），避免榜单被同一个词刷屏
-  if (state.board.some((e) => e.word === word)) {
+  if (state.board.some((e) => e.word === word) || state.pending.has(word)) {
     return { ok: false, reason: 'duplicate' }
   }
 
-  const { score: s, hit } = score(word, state.answer)
+  const roundNo = state.round
+  const answer = state.answer
+  state.guessCount += 1
+  state.pending.add(word)
 
-  state.board.push({ user, word, score: s, hit, at: Date.now() })
+  let s
+  let hit
+  try {
+    // judge:false → 只取 embedding 分，毫秒级返回；精排在后台补
+    ;({ score: s, hit } = await score(word, answer, { judge: false }))
+  } finally {
+    state.pending.delete(word)
+  }
+
+  // 算分期间已经换局了，这条结果作废，否则会污染下一局的榜单
+  if (roundNo !== state.round) return { ok: false, reason: 'round-changed' }
+
+  const entry = { user, word, score: s, hit, at: Date.now() }
+  state.board.push(entry)
   state.board.sort((x, y) => y.score - x.score || x.at - y.at)
   if (state.board.length > 40) state.board.length = 40
+
+  // 先给 embedding 分让观众立刻看到，再让本地大模型在后台复核
+  // 复核回来如果差异明显，直接改这一条的分数并广播，观众看到的是"分数自己往上走了一点"
+  if (!hit) refineScore(entry, word, answer)
 
   if (hit) {
     state.status = 'revealed'
@@ -138,16 +179,15 @@ function submitGuess(user, text) {
 function botTick() {
   if (!state.autopilot || state.status !== 'playing') return
   const user = pick(FAKE_USERS)
-  // 40% 概率用图谱附近的词，60% 用噪声词，模拟真实弹幕分布
+  // 28% 概率用答案里的字，模拟「差一点点」；其余用噪声词，模拟真实弹幕分布
   let word
   if (Math.random() < 0.28) {
     const ans = state.answer
-    // 从答案里拆一个字，制造「差一点点」的效果
     word = [...ans][Math.floor(Math.random() * [...ans].length)] + (Math.random() < 0.5 ? '' : pick(['子', '儿', '头']))
   } else {
     word = pick(NOISE_GUESSES)
   }
-  submitGuess(user, word)
+  submitGuess(user, word).catch((e) => console.warn('[bot] 打分失败：', e.message))
 }
 
 // ---------- 计时 ----------
@@ -214,8 +254,10 @@ const server = http.createServer(async (req, res) => {
   if (p === '/api/guess' && req.method === 'POST') {
     const body = await readBody(req)
     const user = String(body.user || '我').slice(0, 20)
-    return json(res, 200, submitGuess(user, body.text))
+    return json(res, 200, await submitGuess(user, body.text))
   }
+
+  if (p === '/api/engine') return json(res, 200, engineInfo())
 
   if (p === '/api/next' && req.method === 'POST') {
     newRound()
@@ -237,7 +279,7 @@ const server = http.createServer(async (req, res) => {
 
   if (p === '/api/simulate' && req.method === 'POST') {
     const body = await readBody(req)
-    return json(res, 200, submitGuess(String(body.user || pick(FAKE_USERS)), body.text || pick(NOISE_GUESSES)))
+    return json(res, 200, await submitGuess(String(body.user || pick(FAKE_USERS)), body.text || pick(NOISE_GUESSES)))
   }
 
   // 静态文件
@@ -255,8 +297,20 @@ const server = http.createServer(async (req, res) => {
   })
 })
 
+console.log('\n  弹幕猜词 · 本地原型')
+console.log('  正在初始化语义引擎…')
+const engine = await warmup()
+if (engine.enabled) {
+  const c = engine.calib
+  console.log(`  ✓ embedding: ${engine.provider} / ${engine.model}  (${engine.dim} 维，缓存 ${engine.cached} 条)`)
+  if (c) console.log(`  ✓ 校准: 不相关基准 ${c.muU} · 相关基准 ${c.muR} · σ ${c.sigma}`)
+  if (engine.note) console.log(`  ! ${engine.note}`)
+} else {
+  console.log(`  ! 未检测到 embedding 模型，退回纯图谱模式（功能可用，语义精度下降）`)
+  console.log('    启用方式：ollama pull bge-m3')
+}
+
 newRound()
 server.listen(PORT, () => {
-  console.log(`\n  弹幕猜词 · 本地原型已启动`)
   console.log(`  打开: http://127.0.0.1:${PORT}\n`)
 })
