@@ -37,7 +37,9 @@ const state = {
   board: [], // { user, word, score, hit, at }
   pending: new Set(), // 正在算分的词，防止并发时同一个词被加两次
   guessCount: 0,
-  autopilot: true,
+  // 默认关闭：本地自测时打开就分不清「是机器人在猜」还是「真的有人在猜」。
+  // 想直接看直播效果，用 BOT_DEFAULT=1 启动，或点右上角按钮。
+  autopilot: process.env.BOT_DEFAULT === '1',
   hints: [],
   hintOpen: 0,
   history: [], // 已揭晓的历史局
@@ -81,6 +83,7 @@ function snapshot() {
   return {
     round: state.round,
     answer: state.answer,
+    len: [...state.answer].length,
     category: state.category,
     status: state.status,
     remain: Math.max(0, Math.ceil((state.endsAt - now) / 1000)),
@@ -131,7 +134,7 @@ async function refineScore(entry, word, answer) {
   }
 }
 
-async function submitGuess(user, text) {
+async function submitGuess(user, text, opts = {}) {
   if (state.status !== 'playing') return { ok: false, reason: 'round-over' }
   const word = String(text).trim().slice(0, 8)
   if (!word) return { ok: false, reason: 'empty' }
@@ -160,6 +163,8 @@ async function submitGuess(user, text) {
   if (roundNo !== state.round) return { ok: false, reason: 'round-changed' }
 
   const entry = { user, word, score: s, hit, reason, at: Date.now() }
+  // bot 标记一路带到榜单和前端：机器人的猜测必须肉眼可辨，不能和真人弹幕混在一起
+  if (opts.bot) entry.bot = true
   state.board.push(entry)
   state.board.sort((x, y) => y.score - x.score || x.at - y.at)
   if (state.board.length > 40) state.board.length = 40
@@ -193,7 +198,7 @@ function botTick() {
   } else {
     word = pick(NOISE_GUESSES)
   }
-  submitGuess(user, word).catch((e) => console.warn('[bot] 打分失败：', e.message))
+  submitGuess(user, word, { bot: true }).catch((e) => console.warn('[bot] 打分失败：', e.message))
 }
 
 // ---------- 计时 ----------
@@ -285,7 +290,7 @@ const server = http.createServer(async (req, res) => {
 
   if (p === '/api/simulate' && req.method === 'POST') {
     const body = await readBody(req)
-    return json(res, 200, await submitGuess(String(body.user || pick(FAKE_USERS)), body.text || pick(NOISE_GUESSES)))
+    return json(res, 200, await submitGuess(String(body.user || pick(FAKE_USERS)), body.text || pick(NOISE_GUESSES), { bot: true }))
   }
 
   // 静态文件
