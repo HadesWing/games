@@ -277,7 +277,7 @@ function finishGame(key, r){
   DB.setLvl(key, before + (r.stars===3?1 : r.stars===1?-1 : 0));
   FX.big();
   const st=$('#r-stars'); st.innerHTML='';
-  for(let i=1;i<=3;i++) st.appendChild(Object.assign(h('span', i<=r.stars?'':'off',{textContent:'★'})));
+  for(let i=1;i<=3;i++) st.appendChild(h('span', i<=r.stars?'':'off', '★'));
   const ln=$('#r-lines'); ln.innerHTML='';
   r.lines.forEach(l=>ln.appendChild(h('div',null,l.k+'：'+l.v)));
   const up=DB.lvl(key)>before, down=DB.lvl(key)<before;
