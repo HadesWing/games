@@ -67,6 +67,7 @@ data/speech.json 75 条读音映射（上游音节 ID + 呼读音汉字）
 audio/pinyin/    75 条真人录音 mp3 + CREDITS.md 署名
 tools/build_web.py   网页版构建 / 校验（把数据表与 mp3 内嵌成单文件）
 tools/fetch_audio.py 音频提取与覆盖校验脚本
+tools/audit_tones.py 声调合规审计（呼读音须全为第一声）
 ```
 
 **新增一个玩法** = `games/` 下加目录（tscn+gd）+ 主页加一个按钮 + `Db.finish(game_id, score)`，存档/星级/难度/家长看板全部自动生效。
@@ -80,6 +81,14 @@ tools/fetch_audio.py 音频提取与覆盖校验脚本
 **发音优先级**：`audio/pinyin/<拼音>.mp3` 真人录音 → 系统中文 TTS 读 `data/speech.json`
 里的呼读音汉字 → 无声（调用方回退大字报模式）。系统 TTS 不能直接念拼音字母，
 `b` 会被念成英文字母 B，所以兜底必须念「玻」；声母/韵母/音节的汉字映射全在 `speech.json`。
+
+**呼读音一律第一声（阴平）**：教学标准是「声母与其相应的单韵母拼读而成的音节的**第一声**」。
+《汉语拼音方案》韵母表里的「鹅/熬/儿/昂」只是**代表字**，声调属于音节，声母韵母本身不标调，
+但教学时统一读第一声。所以 `e`→`e1`、`f`→`fo1`、`r`→`ri1`、`ao`→`ao1`、`er`→`er1`、`ang`→`ang1`，
+录音和 TTS 兜底汉字都按一声走。
+`fo`/`te`/`ne`/`ri`/`er` 的第一声音节在普通话里**不成词、没有对应汉字**，
+这些条目只有真人录音，`say` 留空，缺录音时走「无声 + 显示大字」兜底。
+合规审计跑 `python tools/audit_tones.py`。
 
 **交互**：
 - A 钓鱼：出题自动读目标音，有「🔊 再听一次」按钮，点任意一条鱼也会读那条鱼的音
@@ -104,15 +113,17 @@ python tools/fetch_audio.py           # 从上游整包重新提取（约 300MB�
 ```bash
 godot --headless --path . res://tests/test_friends.tscn --quit-after 900
 godot --headless --path . res://tests/test_speech.tscn --quit-after 600
-node tests/test_web_core.js   # 网页版核心逻辑 24 项（纯 Node，零依赖）
+node tests/test_web_core.js   # 网页版核心逻辑 27 项（纯 Node，零依赖）
 node tests/test_web_ui.js    # 网页版 DOM 冒烟 8 项（可选，需 jsdom）
+python tools/audit_tones.py   # 声调合规审计（呼读音须全为第一声）
 ```
 
 `test_friends`：音节表一致性、Lv.1-10 卡片数量梯度、配对判定与计分、拖拽载荷、点选通道、
 错答不惩罚、完整一局的 100 分 / 3 星 / 自动升级与存档还原。
 `test_speech`：75 条读音映射与音频覆盖、字母/音节全覆盖、`ü → v` 文件名归一化、
 实际播放 / 连播防叠音 / 停止朗读、TTS 呼读音汉字兜底。
-`test_web_core`：字母池与鱼群梯度、回合卡片覆盖、配对 / 计分 / 星级 / 存档、发音层防叠音。
+`test_web_core`：字母池与鱼群梯度、回合卡片覆盖、配对 / 计分 / 星级 / 存档、发音层防叠音、
+呼读音全为第一声、不成词音节的兜底标签。
 `test_web_ui`：首次渲染、完整一局钓鱼、结算存档、切换玩法、三段拼读、75 张试听卡。
 退出码 0 表示全通过；未装 jsdom 时 DOM 冒烟会自动跳过。
 
