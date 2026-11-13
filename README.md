@@ -39,5 +39,9 @@ node tests/test.js   # 51 项 DOM 回归，需 jsdom；未安装时自动跳过
 
 ## 发布
 
-`main` 分支的 `.github/workflows/deploy.yml` 会 checkout 本分支，
+本分支 push 后，自带的 `Signal games update` 工作流发信号；
+`main` 分支的 `Deploy games` 通过 `workflow_run` 接手，checkout 本分支，
 把 `index.html` 拷成站点的 `/guess-number/index.html`。
+
+> 为什么绕一圈：`push` 事件只读取被推送分支上的工作流文件，而 `github-pages`
+> 环境只允许默认分支部署，orphan 分支直接部署会被环境保护规则拒绝。
