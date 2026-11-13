@@ -1,82 +1,309 @@
 {
   "_about": "拼音读音映射。cmn = audio-cmn 开源真人录音的音节 ID；say = 中文呼读音/同音例字，供系统 TTS 兜底朗读。key 中的 ü 在音频文件名里写作 v。",
+  "_tone_rule": "教学标准：声母/韵母的呼读音一律读第一声（阴平）——「呼读音就是声母与其相应的单韵母拼读而成的音节的第一声」。因此 letters 里 cmn 的调号必须全为 1，say 汉字也必须本身读第一声。音节（syllables）按例词定调，不受此限。",
+  "_say_note": "say 汉字经 mozillazg/pinyin-data 字典校验，读音均为第一声。fo/te/ne/ri/er 五个音节在普通话中无对应成词汉字，say 留空——这些条目依赖真人录音，缺失时走无声兜底（显示大字），不用错误的字凑数。",
   "letters": {
-    "a": { "cmn": "a1", "say": "啊" },
-    "o": { "cmn": "o1", "say": "喔" },
-    "e": { "cmn": "e2", "say": "鹅" },
-    "i": { "cmn": "yi1", "say": "衣" },
-    "u": { "cmn": "wu1", "say": "乌" },
-    "ü": { "cmn": "yu1", "say": "迂" },
-    "b": { "cmn": "bo1", "say": "玻" },
-    "p": { "cmn": "po1", "say": "坡" },
-    "m": { "cmn": "mo1", "say": "摸" },
-    "f": { "cmn": "fo2", "say": "佛" },
-    "d": { "cmn": "de1", "say": "得" },
-    "t": { "cmn": "te1", "say": "特" },
-    "n": { "cmn": "ne1", "say": "讷" },
-    "l": { "cmn": "le1", "say": "勒" },
-    "g": { "cmn": "ge1", "say": "哥" },
-    "k": { "cmn": "ke1", "say": "科" },
-    "h": { "cmn": "he1", "say": "喝" },
-    "j": { "cmn": "ji1", "say": "基" },
-    "q": { "cmn": "qi1", "say": "欺" },
-    "x": { "cmn": "xi1", "say": "希" },
-    "z": { "cmn": "zi1", "say": "资" },
-    "c": { "cmn": "ci1", "say": "雌" },
-    "s": { "cmn": "si1", "say": "思" },
-    "zh": { "cmn": "zhi1", "say": "知" },
-    "ch": { "cmn": "chi1", "say": "吃" },
-    "sh": { "cmn": "shi1", "say": "诗" },
-    "r": { "cmn": "ri4", "say": "日" },
-    "y": { "cmn": "yi1", "say": "衣" },
-    "w": { "cmn": "wu1", "say": "乌" },
-    "ai": { "cmn": "ai1", "say": "哀" },
-    "ei": { "cmn": "ei1", "say": "诶" },
-    "ui": { "cmn": "wei1", "say": "威" },
-    "ao": { "cmn": "ao2", "say": "熬" },
-    "ou": { "cmn": "ou1", "say": "欧" },
-    "iu": { "cmn": "you1", "say": "优" },
-    "ie": { "cmn": "ye1", "say": "耶" },
-    "üe": { "cmn": "yue1", "say": "约" },
-    "er": { "cmn": "er2", "say": "儿" },
-    "an": { "cmn": "an1", "say": "安" },
-    "en": { "cmn": "en1", "say": "恩" },
-    "in": { "cmn": "yin1", "say": "因" },
-    "un": { "cmn": "wen1", "say": "温" },
-    "ün": { "cmn": "yun1", "say": "晕" },
-    "ang": { "cmn": "ang2", "say": "昂" },
-    "eng": { "cmn": "eng1", "say": "鞥" },
-    "ing": { "cmn": "ying1", "say": "英" },
-    "ong": { "cmn": "weng1", "say": "翁" }
+    "a": {
+      "cmn": "a1",
+      "say": "啊"
+    },
+    "o": {
+      "cmn": "o1",
+      "say": "喔"
+    },
+    "e": {
+      "cmn": "e1",
+      "say": "婀"
+    },
+    "i": {
+      "cmn": "yi1",
+      "say": "衣"
+    },
+    "u": {
+      "cmn": "wu1",
+      "say": "乌"
+    },
+    "ü": {
+      "cmn": "yu1",
+      "say": "迂"
+    },
+    "b": {
+      "cmn": "bo1",
+      "say": "玻"
+    },
+    "p": {
+      "cmn": "po1",
+      "say": "坡"
+    },
+    "m": {
+      "cmn": "mo1",
+      "say": "摸"
+    },
+    "f": {
+      "cmn": "fo1",
+      "say": ""
+    },
+    "d": {
+      "cmn": "de1",
+      "say": "嘚"
+    },
+    "t": {
+      "cmn": "te1",
+      "say": ""
+    },
+    "n": {
+      "cmn": "ne1",
+      "say": ""
+    },
+    "l": {
+      "cmn": "le1",
+      "say": "肋"
+    },
+    "g": {
+      "cmn": "ge1",
+      "say": "哥"
+    },
+    "k": {
+      "cmn": "ke1",
+      "say": "科"
+    },
+    "h": {
+      "cmn": "he1",
+      "say": "喝"
+    },
+    "j": {
+      "cmn": "ji1",
+      "say": "基"
+    },
+    "q": {
+      "cmn": "qi1",
+      "say": "欺"
+    },
+    "x": {
+      "cmn": "xi1",
+      "say": "希"
+    },
+    "z": {
+      "cmn": "zi1",
+      "say": "资"
+    },
+    "c": {
+      "cmn": "ci1",
+      "say": "刺"
+    },
+    "s": {
+      "cmn": "si1",
+      "say": "思"
+    },
+    "zh": {
+      "cmn": "zhi1",
+      "say": "知"
+    },
+    "ch": {
+      "cmn": "chi1",
+      "say": "吃"
+    },
+    "sh": {
+      "cmn": "shi1",
+      "say": "诗"
+    },
+    "r": {
+      "cmn": "ri1",
+      "say": ""
+    },
+    "y": {
+      "cmn": "yi1",
+      "say": "衣"
+    },
+    "w": {
+      "cmn": "wu1",
+      "say": "乌"
+    },
+    "ai": {
+      "cmn": "ai1",
+      "say": "哀"
+    },
+    "ei": {
+      "cmn": "ei1",
+      "say": "欸"
+    },
+    "ui": {
+      "cmn": "wei1",
+      "say": "威"
+    },
+    "ao": {
+      "cmn": "ao1",
+      "say": "凹"
+    },
+    "ou": {
+      "cmn": "ou1",
+      "say": "欧"
+    },
+    "iu": {
+      "cmn": "you1",
+      "say": "优"
+    },
+    "ie": {
+      "cmn": "ye1",
+      "say": "耶"
+    },
+    "üe": {
+      "cmn": "yue1",
+      "say": "约"
+    },
+    "er": {
+      "cmn": "er1",
+      "say": ""
+    },
+    "an": {
+      "cmn": "an1",
+      "say": "安"
+    },
+    "en": {
+      "cmn": "en1",
+      "say": "恩"
+    },
+    "in": {
+      "cmn": "yin1",
+      "say": "因"
+    },
+    "un": {
+      "cmn": "wen1",
+      "say": "温"
+    },
+    "ün": {
+      "cmn": "yun1",
+      "say": "晕"
+    },
+    "ang": {
+      "cmn": "ang1",
+      "say": "肮"
+    },
+    "eng": {
+      "cmn": "eng1",
+      "say": "鞥"
+    },
+    "ing": {
+      "cmn": "ying1",
+      "say": "英"
+    },
+    "ong": {
+      "cmn": "weng1",
+      "say": "翁"
+    }
   },
   "syllables": {
-    "ba": { "cmn": "ba4", "say": "爸" },
-    "ma": { "cmn": "ma1", "say": "妈" },
-    "da": { "cmn": "da4", "say": "大" },
-    "ta": { "cmn": "ta3", "say": "塔" },
-    "tu": { "cmn": "tu4", "say": "兔" },
-    "gu": { "cmn": "gu3", "say": "鼓" },
-    "hu": { "cmn": "hu2", "say": "狐" },
-    "ge": { "cmn": "ge1", "say": "哥" },
-    "he": { "cmn": "he2", "say": "河" },
-    "ke": { "cmn": "ke1", "say": "蝌" },
-    "bi": { "cmn": "bi3", "say": "笔" },
-    "mi": { "cmn": "mi3", "say": "米" },
-    "di": { "cmn": "di4", "say": "弟" },
-    "mu": { "cmn": "mu4", "say": "木" },
-    "pu": { "cmn": "pu2", "say": "葡" },
-    "ji": { "cmn": "ji1", "say": "鸡" },
-    "qi": { "cmn": "qi4", "say": "气" },
-    "xi": { "cmn": "xi1", "say": "西" },
-    "pi": { "cmn": "pi2", "say": "皮" },
-    "li": { "cmn": "li2", "say": "梨" },
-    "ni": { "cmn": "ni2", "say": "泥" },
-    "ku": { "cmn": "ku4", "say": "裤" },
-    "lu": { "cmn": "lu4", "say": "鹿" },
-    "ya": { "cmn": "ya1", "say": "鸭" },
-    "wo": { "cmn": "wo3", "say": "我" },
-    "zhu": { "cmn": "zhu1", "say": "猪" },
-    "che": { "cmn": "che1", "say": "车" },
-    "shu": { "cmn": "shu4", "say": "树" }
+    "ba": {
+      "cmn": "ba4",
+      "say": "爸"
+    },
+    "ma": {
+      "cmn": "ma1",
+      "say": "妈"
+    },
+    "da": {
+      "cmn": "da4",
+      "say": "大"
+    },
+    "ta": {
+      "cmn": "ta3",
+      "say": "塔"
+    },
+    "tu": {
+      "cmn": "tu4",
+      "say": "兔"
+    },
+    "gu": {
+      "cmn": "gu3",
+      "say": "鼓"
+    },
+    "hu": {
+      "cmn": "hu2",
+      "say": "狐"
+    },
+    "ge": {
+      "cmn": "ge1",
+      "say": "哥"
+    },
+    "he": {
+      "cmn": "he2",
+      "say": "河"
+    },
+    "ke": {
+      "cmn": "ke1",
+      "say": "蝌"
+    },
+    "bi": {
+      "cmn": "bi3",
+      "say": "笔"
+    },
+    "mi": {
+      "cmn": "mi3",
+      "say": "米"
+    },
+    "di": {
+      "cmn": "di4",
+      "say": "弟"
+    },
+    "mu": {
+      "cmn": "mu4",
+      "say": "木"
+    },
+    "pu": {
+      "cmn": "pu2",
+      "say": "葡"
+    },
+    "ji": {
+      "cmn": "ji1",
+      "say": "鸡"
+    },
+    "qi": {
+      "cmn": "qi4",
+      "say": "气"
+    },
+    "xi": {
+      "cmn": "xi1",
+      "say": "西"
+    },
+    "pi": {
+      "cmn": "pi2",
+      "say": "皮"
+    },
+    "li": {
+      "cmn": "li2",
+      "say": "梨"
+    },
+    "ni": {
+      "cmn": "ni2",
+      "say": "泥"
+    },
+    "ku": {
+      "cmn": "ku4",
+      "say": "裤"
+    },
+    "lu": {
+      "cmn": "lu4",
+      "say": "鹿"
+    },
+    "ya": {
+      "cmn": "ya1",
+      "say": "鸭"
+    },
+    "wo": {
+      "cmn": "wo3",
+      "say": "我"
+    },
+    "zhu": {
+      "cmn": "zhu1",
+      "say": "猪"
+    },
+    "che": {
+      "cmn": "che1",
+      "say": "车"
+    },
+    "shu": {
+      "cmn": "shu4",
+      "say": "树"
+    }
   }
 }
