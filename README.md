@@ -28,7 +28,11 @@
    `pinyin` 取 `web/index.html`（数据表与 75 条 mp3 已内嵌，无需拷贝音频目录）；
 3. 组装成 `_site/index.html`（门厅）+ `_site/<游戏>/index.html`，上传到 GitHub Pages。
 
-改门厅页推送到 `main`、或推送 `pinyin` / `guess-number` 分支会自动发布；只改了其它游戏分支时，去 Actions 页面手动点一次 **Run workflow** 即可。
+改门厅页推送到 `main` 会自动发布。`guess-number` 分支自带 `Signal games update`
+（push 触发），跑完后由 `main` 的 `Deploy games` 通过 `workflow_run` 接手发布 ——
+因为 `push` 事件只读取被推送分支上的工作流文件，且 `github-pages` 环境只允许默认分支部署。
+`pinyin` 等其它分支暂未接信号，改完去 Actions 页面手动点一次 **Run workflow**，
+或照 `guess-number` 的 `.github/workflows/deploy.yml` 补一份信号工作流。
 
 `danmaku-guess` 需要常驻 Node 服务（SSE）和本地模型，无法做成静态页，因此不参与聚合部署，门厅页那张卡片直接指向该分支的源码。
 
