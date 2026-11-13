@@ -16,18 +16,19 @@
 | `kids-sudoku` | 🧩 小动物数独乐园 | 静态 HTML | `/kids-sudoku/` |
 | `visual-detective` | 🔍 视觉小侦探（原型） | 静态 HTML | `/visual-detective/` |
 | `pinyin` | 🔤 拼音乐园（75 条真人配音） | 自包含静态 HTML | `/pinyin/` |
+| `guess-number` | 🔢 猜数字（区间夹逼） | 自包含静态 HTML | `/guess-number/` |
 | `danmaku-guess` | 💬 弹幕猜词 | Node 服务 + 本地模型 | 不部署，需本地运行 |
 
 ## 自动发布
 
 `.github/workflows/deploy.yml`（在 `main` 分支）负责把各游戏分支聚合成一个站点：
 
-1. 依次 checkout `main` / `earth` / `kids-sudoku` / `visual-detective` / `pinyin`；
+1. 依次 checkout `main` / `earth` / `kids-sudoku` / `visual-detective` / `pinyin` / `guess-number`；
 2. `earth` 跑 `npm ci && npm run build` 出单文件产物，其余直接拷贝 HTML；
    `pinyin` 取 `web/index.html`（数据表与 75 条 mp3 已内嵌，无需拷贝音频目录）；
 3. 组装成 `_site/index.html`（门厅）+ `_site/<游戏>/index.html`，上传到 GitHub Pages。
 
-改门厅页推送到 `main` 会自动发布；只改了某个游戏分支时，去 Actions 页面手动点一次 **Run workflow** 即可（或以后给各分支也加上 push 触发）。
+改门厅页推送到 `main`、或推送 `pinyin` / `guess-number` 分支会自动发布；只改了其它游戏分支时，去 Actions 页面手动点一次 **Run workflow** 即可。
 
 `danmaku-guess` 需要常驻 Node 服务（SSE）和本地模型，无法做成静态页，因此不参与聚合部署，门厅页那张卡片直接指向该分支的源码。
 
