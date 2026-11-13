@@ -83,6 +83,35 @@ ok("呼读音汉字映射存在", () => {
   assert.strictEqual(run("sayOf('b')"), "玻");
   assert.strictEqual(run("sayOf('ba')"), "爸");
 });
+ok("47 条字母呼读音全为第一声（教学标准）", () => {
+  // 声母/韵母的呼读音 = 该音节的第一声。「鹅/佛/日/熬/儿/昂」是韵母表的
+  // 代表字，声调属于音节，声母韵母本身不标调；教学时统一读第一声。
+  const bad = run(`(function(){
+    var out=[];
+    for (var k in SPEECH.letters) {
+      var cmn = SPEECH.letters[k].cmn;
+      if (cmn.slice(-1) !== "1") out.push(k + "=" + cmn);
+    }
+    return out;
+  })()`);
+  // vm 沙箱里的数组与 Node 侧原型不同，deepStrictEqual 会误判；用 JSON 比
+  assert.strictEqual(JSON.stringify(bad), "[]", `非一声条目: ${JSON.stringify(bad)}`);
+  assert.strictEqual(run("Object.keys(SPEECH.letters).length"), 47);
+});
+ok("6 条曾读错调的字母已改为一声版本", () => {
+  const expect = { e: "e1", f: "fo1", r: "ri1", ao: "ao1", er: "er1", ang: "ang1" };
+  for (const [k, cmn] of Object.entries(expect)) {
+    assert.strictEqual(run(`SPEECH.letters[${JSON.stringify(k)}].cmn`), cmn);
+  }
+});
+ok("不成词音节的兜底标签不显示空白", () => {
+  // fo/te/ne/ri/er 的第一声音节在普通话里没有汉字，只能显示「只有录音」
+  for (const k of ["f", "t", "n", "r", "er"]) {
+    assert.strictEqual(run(`sayOf(${JSON.stringify(k)})`), "");
+    assert.strictEqual(run(`sayLabel(${JSON.stringify(k)})`), "只有录音");
+  }
+  assert.strictEqual(run("sayLabel('b')"), "玻");
+});
 
 // ---- A 钓鱼难度池 ----
 ok("字母池随等级递增：Lv.1 六个单韵母，Lv.10 覆盖前 5 个阶段", () => {

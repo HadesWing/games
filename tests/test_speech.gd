@@ -61,7 +61,14 @@ func _run() -> void:
 		if PinyinData.say_text(k) == "":
 			no_say.append(k)
 	_check("真人录音覆盖全部读音", no_audio.is_empty(), "缺 %d 个 %s" % [no_audio.size(), str(no_audio.slice(0, 8))])
-	_check("TTS 兜底汉字覆盖全部读音", no_say.is_empty(), str(no_say))
+	# fo/te/ne/ri/er 的第一声音节在普通话里不成词，没有对应汉字可让 TTS 读；
+	# 这些条目依赖真人录音，缺录音时走「无声 + 显示大字」兜底，不算缺陷。
+	var NO_SAY_OK := ["f", "t", "n", "r", "er"]
+	var bad_no_say: Array = []
+	for k in no_say:
+		if not NO_SAY_OK.has(k):
+			bad_no_say.append(k)
+	_check("无 TTS 汉字的条目仅限不成词音节", bad_no_say.is_empty(), str(bad_no_say))
 	var cant: Array = []
 	for k in PinyinData.all_speech_keys():
 		if not PinyinData.can_speak(k):
@@ -93,3 +100,26 @@ func _run() -> void:
 	_check("声母 b 读「玻」", PinyinData.say_text("b") == "玻")
 	_check("韵母 a 读「啊」", PinyinData.say_text("a") == "啊")
 	_check("音节 ba 读「爸」", PinyinData.say_text("ba") == "爸")
+
+	# ===== 声调：呼读音一律第一声 =====
+	# 教学标准：声母/韵母的呼读音是该音节的第一声（阴平）。
+	# 「鹅/佛/日/熬/儿/昂」都是韵母表里的代表字，声调属于音节，
+	# 声母韵母本身不标调；教学时统一读第一声，录音与 TTS 都必须对齐。
+	var tone_bad: Array = []
+	var speech_map: Dictionary = PinyinData.speech
+	for group in ["letters"]:
+		var g: Variant = speech_map.get(group, {})
+		if g is Dictionary:
+			for k in g.keys():
+				var item: Variant = g[k]
+				if item is Dictionary:
+					var cmn := str(item.get("cmn", ""))
+					if not cmn.ends_with("1"):
+						tone_bad.append("%s=%s" % [k, cmn])
+	_check("47 条字母呼读音全为第一声", tone_bad.is_empty(), str(tone_bad))
+	_check("单韵母 e 用一声录音", str(speech_map["letters"]["e"]["cmn"]) == "e1")
+	_check("声母 f 用一声录音", str(speech_map["letters"]["f"]["cmn"]) == "fo1")
+	_check("声母 r 用一声录音", str(speech_map["letters"]["r"]["cmn"]) == "ri1")
+	_check("韵母 ao 用一声录音", str(speech_map["letters"]["ao"]["cmn"]) == "ao1")
+	_check("韵母 er 用一声录音", str(speech_map["letters"]["er"]["cmn"]) == "er1")
+	_check("韵母 ang 用一声录音", str(speech_map["letters"]["ang"]["cmn"]) == "ang1")
