@@ -1,9 +1,11 @@
 name: Deploy games
 
-# 每次改动门厅页就重新发布；也可以在 Actions 页面手动点运行
+# 门厅页或任一游戏分支有改动就重新发布；也可以在 Actions 页面手动点运行
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - pinyin
   workflow_dispatch:
 
 permissions:
