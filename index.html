@@ -131,7 +131,7 @@
   </div>
 
   <section class="panel">
-    <div class="label">答案在</div>
+    <div class="label" id="rangeLabel">答案在</div>
     <div class="range" id="rangeText">1<span class="tilde">~</span>100</div>
     <div class="bar"><div class="bar-fill" id="barFill"></div></div>
     <div class="bar-ends"><span id="barMin">1</span><span id="barMax">100</span></div>
@@ -226,25 +226,37 @@
     f.innerHTML = html;
   }
 
-  function rangeText(){ return fmt(S.low) + '<span class="tilde">~</span>' + fmt(S.high); }
+  // low/high 是猜过的边界（端点要排除），curLo/curHi 才是真正还能输入的闭区间
+  function curLo(){ return S.low + (S.lowEx ? 1 : 0); }
+  function curHi(){ return S.high - (S.highEx ? 1 : 0); }
+  function leftCount(){ return Math.max(0, curHi() - curLo() + 1); }
+  function rangeText(){
+    var lo = curLo(), hi = curHi();
+    return lo === hi ? fmt(lo) : fmt(lo) + '<span class="tilde">~</span>' + fmt(hi);
+  }
 
   function render(){
-    $('#rangeText').innerHTML = rangeText();
+    var span = S.hi - S.lo;
     $('#barMin').textContent = fmt(S.lo);
     $('#barMax').textContent = fmt(S.hi);
-    var span = S.hi - S.lo;
-    var left = (S.low - S.lo) / span * 100;
-    var width = Math.max(2, (S.high - S.low) / span * 100);
-    $('#barFill').style.left = left + '%';
-    $('#barFill').style.width = Math.min(width, 100-left) + '%';
-
-    var parts = [];
-    if(S.lowEx) parts.push('比 ' + fmt(S.low) + ' 大');
-    if(S.highEx) parts.push('比 ' + fmt(S.high) + ' 小');
-    $('#rangeHint').textContent = parts.length
-      ? '两端是猜过的数，答案' + parts.join('、') + '（不含两端）'
-      : '从正中间猜起最快哦';
-    $('#rangeHint').textContent += ' · 还剩 ' + fmt(S.high - S.low - 1 + (S.lowEx?0:1) + (S.highEx?0:1)) + ' 个可能';
+    if(S.done){
+      $('#rangeLabel').textContent = '答案是';
+      $('#rangeText').textContent = fmt(S.target);
+      $('#barFill').style.left = Math.min((S.target - S.lo) / span * 100, 98) + '%';
+      $('#barFill').style.width = '2%';
+      $('#rangeHint').textContent = '本局结束 · 点「再来」开新的一局';
+    } else {
+      var lo = curLo(), hi = curHi();
+      var left = (lo - S.lo) / span * 100;
+      var width = Math.max(2, (hi - lo + 1) / span * 100);
+      $('#rangeLabel').textContent = '答案在';
+      $('#rangeText').innerHTML = rangeText();
+      $('#barFill').style.left = left + '%';
+      $('#barFill').style.width = Math.min(width, 100 - left) + '%';
+      $('#rangeHint').textContent =
+        (S.lowEx || S.highEx ? '已排除猜过的数，' : '从正中间猜起最快哦，') +
+        '还剩 ' + fmt(leftCount()) + ' 个可能';
+    }
 
     $('#tries').textContent = S.tries;
     var d = load();
@@ -253,7 +265,7 @@
 
     var rows = S.history.slice().reverse().map(function(h){
       var cmp = h.cmp === 'win' ? '🎉 猜中啦' : (h.cmp === 'low' ? '📉 小了' : '📈 大了');
-      var tail = h.cmp === 'win' ? '答案就是它' : '→ ' + fmt(h.low) + ' ~ ' + fmt(h.high);
+      var tail = h.cmp === 'win' ? '答案就是它' : '→ ' + fmt(h.lo) + ' ~ ' + fmt(h.hi);
       return '<li class="' + (h.cmp==='win'?'win':'') + '">' +
         '<span class="n">#' + h.n + '</span>' +
         '<span class="g">' + fmt(h.guess) + '</span>' +
@@ -285,7 +297,7 @@
 
   function win(g){
     S.done = true;
-    S.history.push({ n:S.tries, guess:g, cmp:'win', low:S.low, high:S.high });
+    S.history.push({ n:S.tries, guess:g, cmp:'win', lo:curLo(), hi:curHi() });
     var d = load();
     var prev = d.best[S.mode];
     var isBest = !prev || S.tries < prev;
@@ -313,8 +325,8 @@
     if(!isFinite(g) || g < S.lo || g > S.hi){
       msg('要在 <b>' + fmt(S.lo) + ' ~ ' + fmt(S.hi) + '</b> 之间哦', 'warn'); return;
     }
-    if((S.lowEx && g <= S.low) || (S.highEx && g >= S.high)){
-      msg('这个数已经排除啦～答案就在 <b>' + rangeText() + '</b> 之间（不含两端）', 'warn'); return;
+    if(g < curLo() || g > curHi()){
+      msg('这个数已经排除啦～答案就在 <b>' + rangeText() + '</b> ' + (curLo()===curHi() ? '哦' : '之间'), 'warn'); return;
     }
     var dup = false;
     for(var i=0;i<S.history.length;i++){ if(S.history[i].guess === g){ dup = true; break; } }
@@ -325,11 +337,11 @@
     var cmp;
     if(g < S.target){ S.low = g; S.lowEx = true; cmp = 'low'; }
     else { S.high = g; S.highEx = true; cmp = 'high'; }
-    S.history.push({ n:S.tries, guess:g, cmp:cmp, low:S.low, high:S.high });
+    S.history.push({ n:S.tries, guess:g, cmp:cmp, lo:curLo(), hi:curHi() });
     render();
     msg((cmp === 'low' ? '📉 <b>' + fmt(g) + '</b> 太小了！' : '📈 <b>' + fmt(g) + '</b> 太大了！') +
-        '<br>现在答案锁定在 <b>' + rangeText() + '</b> 之间' +
-        '<br><span style="font-size:12px;opacity:.8">（比 ' + fmt(S.low) + ' 大、比 ' + fmt(S.high) + ' 小）</span>',
+        '<br>现在答案锁定在 <b>' + rangeText() + '</b>' + (curLo()===curHi() ? '' : ' 之间') +
+        '<br><span style="font-size:12px;opacity:.8">（只剩 ' + fmt(leftCount()) + ' 个可能）</span>',
         cmp === 'low' ? 'down' : 'up');
   }
 
