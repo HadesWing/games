@@ -178,7 +178,13 @@ function audioKey(k){ return String(k).replace(/ü/g, "v"); }
 function srcOf(k){ return AUDIO[audioKey(k)] || null; }
 function sayOf(k){
   var e = (SPEECH.letters||{})[k] || (SPEECH.syllables||{})[k];
-  return e ? e.say : "";
+  return e ? (e.say || "") : "";
+}
+/* 呼读音一律第一声。fo/te/ne/ri/er 的第一声音节在普通话里不成词，
+   没有对应汉字可朗读，这些条目只有真人录音，say 为空。 */
+function sayLabel(k){
+  var s = sayOf(k);
+  return s || "只有录音";
 }
 function shuffle(a){
   var r = a.slice();
@@ -389,7 +395,7 @@ function renderFishing(){
     '<button class="btn primary" data-act="replay">🔊 再听一次</button>' +
     '<button class="btn" data-act="toggleText">' + (F.showText ? "🙈 藏起来" : "👀 看字提示") + '</button>' +
     '</div><div class="text-hint' + (F.showText?'':' hidden') + '">目标：<b>' + esc(cur) +
-    '</b> ' + esc(sayOf(cur)) + '</div></div>';
+    '</b> ' + esc(sayLabel(cur)) + '</div></div>';
   html += '<div class="pond"><div class="bubbles">🫧　　🫧　　　　🫧　　🫧</div><div class="fish-grid">';
   F.cards.forEach(function(k,i){
     html += '<button class="fish" data-act="fish" data-k="' + esc(k) + '" style="--c:' +
@@ -494,7 +500,7 @@ function submit(s, y, yunEl){
 function listenGroups(){
   var gs = (TABLE.stages||[]).map(function(s){
     return {name:s.name, items:s.letters.map(function(k){
-      return {k:k, say:sayOf(k)}; })};
+      return {k:k, say:sayLabel(k)}; })};
   });
   gs.push({name:"两拼音节 · 带调例字", items:(TABLE.syllables||[]).map(function(e){
     return {k:e.syl, say:e.tone + " " + e.word}; })});
