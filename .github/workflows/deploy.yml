@@ -1,12 +1,15 @@
 name: Deploy games
 
-# 门厅页或任一游戏分支有改动就重新发布；也可以在 Actions 页面手动点运行
+# 门厅页 push、或游戏分支的「Signal games update」跑完，就重新发布；也可手动点运行。
+# push 事件只读取被推送分支上的工作流文件，orphan 游戏分支必须自带信号工作流；
+# 而且 github-pages 环境只允许默认分支部署，所以由这里的 workflow_run（运行在默认分支）接手。
 on:
   push:
     branches:
       - main
-      - pinyin
-      - guess-number
+  workflow_run:
+    workflows: ["Signal games update"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -20,6 +23,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: 取门厅页（main）
