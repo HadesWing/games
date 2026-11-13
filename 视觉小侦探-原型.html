@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>视觉小侦探 · 原型 v1</title>
+<title>视觉小侦探 · 原型 v2</title>
 <style>
   :root{
     --bg:#FBF6EE; --card:#FFFFFF; --ink:#3E3A33; --sub:#8A8377;
@@ -81,7 +81,9 @@
     background:var(--card); border-radius:24px; box-shadow:var(--shadow);
     padding:34px 46px; text-align:center; margin-top:6vh; max-width:520px;
   }
+  .verdict{font-size:22px; font-weight:700; color:var(--ink); margin:2px 0 0;}
   .stars{font-size:56px; letter-spacing:8px; margin:10px 0;}
+  .stars span{display:inline-block;}
   .stars .off{opacity:.22;}
   .lines{margin:14px 0 22px;}
   .lines div{font-size:17px; padding:5px 0;}
@@ -130,6 +132,7 @@
 <div class="screen" id="scr-result">
   <div class="panel">
     <div style="font-size:40px;">🎉</div>
+    <div class="verdict" id="r-verdict"></div>
     <div class="stars" id="r-stars"></div>
     <div class="lines" id="r-lines"></div>
     <div class="rowbtns">
@@ -271,15 +274,29 @@ function openGame(key){
   });
 }
 function starsOf(score, th){ return score>=th[1]?3 : score>=th[0]?2 : 1; }
+// 结算渲染统一走这里：任何对象都必须先转成可读文本，
+// 绝不能直接塞进 textContent（旧版一度把整条结果对象渲染成 [object Object]）。
+function safeText(v){
+  if(v==null) return '';
+  if(typeof v==='object') return JSON.stringify(v);
+  return String(v);
+}
 function finishGame(key, r){
+  const stars = clamp(parseInt(r.stars,10)||0, 0, 3);
+  const score = Number(r.score)||0;
   const before=DB.lvl(key);
-  DB.add({ g:key, lvl:before, score:r.score, stars:r.stars, extra:r.extra||{}, t:Date.now() });
-  DB.setLvl(key, before + (r.stars===3?1 : r.stars===1?-1 : 0));
+  DB.add({ g:key, lvl:before, score:score, stars:stars, extra:r.extra||{}, t:Date.now() });
+  DB.setLvl(key, before + (stars===3?1 : stars===1?-1 : 0));
   FX.big();
-  const st=$('#r-stars'); st.innerHTML='';
-  for(let i=1;i<=3;i++) st.appendChild(h('span', i<=r.stars?'':'off', '★'));
-  const ln=$('#r-lines'); ln.innerHTML='';
-  r.lines.forEach(l=>ln.appendChild(h('div',null,l.k+'：'+l.v)));
+  $('#r-verdict').textContent =
+    stars>=3 ? '稳稳照住，太准了！' :
+    stars===2 ? '不错，再稳一点' : '别急，跟着光点慢慢挪';
+  const st=$('#r-stars'); st.textContent='';
+  for(let i=1;i<=3;i++) st.appendChild(h('span', i<=stars?'':'off', '★'));
+  const ln=$('#r-lines'); ln.textContent='';
+  const lines = Array.isArray(r.lines) ? r.lines : [];
+  lines.forEach(l=>ln.appendChild(h('div',null, safeText(l&&l.k)+'：'+safeText(l&&l.v))));
+  ln.appendChild(h('div',null,'本次得分：'+score+' 分'));
   const up=DB.lvl(key)>before, down=DB.lvl(key)<before;
   ln.appendChild(h('div','tag', up?'难度升级 → Lv.'+DB.lvl(key) : down?'难度降回 Lv.'+DB.lvl(key) : '难度不变 · Lv.'+DB.lvl(key)));
   show('scr-result');
