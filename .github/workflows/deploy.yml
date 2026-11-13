@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - pinyin
+      - guess-number
   workflow_dispatch:
 
 permissions:
@@ -51,6 +52,12 @@ jobs:
           ref: pinyin
           path: src/pinyin
 
+      - name: 取猜数字（guess-number）
+        uses: actions/checkout@v4
+        with:
+          ref: guess-number
+          path: src/guess-number
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -66,12 +73,13 @@ jobs:
       - name: 组装站点
         run: |
           set -e
-          mkdir -p _site/earth _site/kids-sudoku _site/visual-detective _site/pinyin
+          mkdir -p _site/earth _site/kids-sudoku _site/visual-detective _site/pinyin _site/guess-number
           cp src/main/index.html _site/index.html
           touch _site/.nojekyll
           cp src/earth/dist/index.html _site/earth/index.html
           # pinyin 的 web/index.html 已内嵌 75 条真人录音，单文件直接拷贝即可
           cp src/pinyin/web/index.html _site/pinyin/index.html
+          cp src/guess-number/index.html _site/guess-number/index.html
 
           # 数独分支早期版本是"earth 根目录 + kids-sudoku/ 子目录"，这里兼容两种布局
           if [ -f "src/kids-sudoku/kids-sudoku/小动物数独乐园.html" ]; then
