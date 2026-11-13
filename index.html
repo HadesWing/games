@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>猜数字 · 范围追踪</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔢</text></svg>">
+<style>
+  :root{
+    --ink:#2b4a63; --paper:#fffdf6; --green:#1b9c7c; --green-d:#137a61;
+    --blue:#3b82b8; --orange:#e08a2e; --muted:#7d94a6; --line:#e4ecf1;
+  }
+  *{margin:0;box-sizing:border-box;}
+  body{
+    min-height:100vh;font-family:"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);
+    background:linear-gradient(180deg,#bfe6f7 0%,#e8f6ef 60%,#fff7de 100%);
+    display:flex;flex-direction:column;align-items:center;padding:28px 14px 48px;
+  }
+  .wrap{width:100%;max-width:600px;}
+  header{text-align:center;margin-bottom:18px;}
+  h1{font-size:30px;letter-spacing:1px;}
+  .sub{font-size:13px;opacity:.72;margin-top:6px;line-height:1.6;}
+  .back{display:inline-block;margin-bottom:10px;font-size:13px;color:var(--green-d);text-decoration:none;}
+
+  .modes{display:flex;gap:8px;margin-bottom:16px;}
+  .mode{
+    flex:1;padding:12px 4px;border:2px solid transparent;border-radius:14px;
+    background:rgba(255,255,255,.62);color:var(--ink);font-size:15px;font-weight:700;
+    cursor:pointer;transition:.16s;font-family:inherit;
+  }
+  .mode:hover{background:#fff;}
+  .mode.active{background:var(--green);color:#fff;box-shadow:0 5px 14px rgba(27,156,124,.32);}
+
+  .panel{
+    background:var(--paper);border-radius:20px;padding:20px;margin-bottom:14px;
+    box-shadow:0 6px 20px rgba(40,100,140,.13);
+  }
+  .label{font-size:13px;color:var(--muted);text-align:center;}
+  .range{font-size:42px;font-weight:800;text-align:center;letter-spacing:1px;margin:2px 0 14px;font-variant-numeric:tabular-nums;}
+  .range .tilde{color:var(--green);margin:0 8px;font-size:30px;}
+  .bar{height:14px;border-radius:999px;background:#e9eff3;overflow:hidden;position:relative;}
+  .bar-fill{
+    position:absolute;top:0;bottom:0;border-radius:999px;
+    background:linear-gradient(90deg,#54c9a5,#1b9c7c);transition:.35s ease;left:0;width:100%;
+  }
+  .bar-ends{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:5px;}
+  .hint{font-size:12px;color:var(--muted);text-align:center;margin-top:9px;line-height:1.5;}
+
+  form{display:flex;gap:10px;}
+  #guess{
+    flex:1;min-width:0;padding:0 16px;height:56px;border:2px solid #d8e5ec;border-radius:14px;
+    font-size:24px;font-weight:700;color:var(--ink);background:#fff;outline:none;
+    font-family:inherit;font-variant-numeric:tabular-nums;text-align:center;
+  }
+  #guess:focus{border-color:var(--green);box-shadow:0 0 0 4px rgba(27,156,124,.14);}
+  #guess::placeholder{font-size:15px;font-weight:400;color:#a9bcc9;}
+  .go{
+    width:104px;height:56px;border:0;border-radius:14px;background:var(--green);color:#fff;
+    font-size:19px;font-weight:800;cursor:pointer;font-family:inherit;
+    box-shadow:0 5px 14px rgba(27,156,124,.3);transition:.16s;
+  }
+  .go:hover{background:var(--green-d);transform:translateY(-2px);}
+  .go:active{transform:translateY(0);}
+
+  .feedback{
+    min-height:52px;margin-top:14px;padding:12px 14px;border-radius:12px;
+    background:#eef6fa;font-size:15px;line-height:1.55;text-align:center;transition:.2s;
+  }
+  .feedback b{font-size:18px;}
+  .feedback.down{background:#e6f2fb;color:#22618f;}
+  .feedback.up{background:#fdf0df;color:#a15c11;}
+  .feedback.warn{background:#f2f0ea;color:#7a705c;}
+  .feedback.win{background:#e2f6ee;color:var(--green-d);font-weight:700;}
+
+  .stats{display:flex;justify-content:space-around;margin-top:14px;font-size:12px;color:var(--muted);text-align:center;}
+  .stats b{display:block;font-size:19px;color:var(--ink);margin-bottom:2px;font-variant-numeric:tabular-nums;}
+
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .panel-head h2{font-size:16px;}
+  .panel-head span,.link{font-size:12px;color:var(--muted);}
+  .link{background:none;border:0;cursor:pointer;font-family:inherit;color:var(--green-d);font-weight:700;padding:4px 8px;}
+  .history{list-style:none;max-height:260px;overflow-y:auto;}
+  .history li{
+    display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px dashed var(--line);font-size:14px;
+  }
+  .history li:last-child{border-bottom:0;}
+  .history .n{color:var(--muted);font-size:12px;width:28px;flex:none;}
+  .history .g{font-size:19px;font-weight:800;width:64px;flex:none;font-variant-numeric:tabular-nums;}
+  .history .cmp{flex:1;}
+  .history .tail{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;}
+  .history li.win{background:#eaf8f1;border-radius:8px;}
+  .history li.empty{color:var(--muted);font-size:13px;justify-content:center;border:0;}
+
+  .records{margin-top:4px;}
+  .records .row{display:flex;justify-content:space-between;gap:8px;padding:8px 4px;border-bottom:1px dashed var(--line);font-size:13px;}
+  .records .row:last-child{border:0;}
+  .records .row .who{color:var(--muted);}
+  .note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5;}
+  .hidden{display:none;}
+
+  .actions{display:flex;gap:10px;margin-top:2px;}
+  .ghost{
+    flex:1;padding:13px;border:2px solid #cfe0e8;border-radius:14px;background:rgba(255,255,255,.7);
+    color:var(--ink);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;
+  }
+  .ghost:hover{background:#fff;border-color:var(--green);}
+  footer{text-align:center;font-size:11px;opacity:.6;margin-top:22px;line-height:1.8;}
+
+  #confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:9;}
+  .conf{position:absolute;top:-24px;font-size:20px;animation:fall 2.2s linear forwards;}
+  @keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:0;}}
+
+  @media(max-width:420px){
+    h1{font-size:26px;} .range{font-size:34px;} .go{width:88px;font-size:17px;}
+    .panel{padding:16px;} .mode{font-size:13px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="back" href="../">← 回游戏小屋</a>
+    <h1>🔢 猜数字</h1>
+    <div class="sub">选好范围，输入你猜的数；每猜一次，答案就被锁进更小的区间里</div>
+  </header>
+
+  <div class="modes" id="modes">
+    <button type="button" class="mode active" data-max="100">100 以内</button>
+    <button type="button" class="mode" data-max="1000">1000 以内</button>
+    <button type="button" class="mode" data-max="10000">1 万以内</button>
+  </div>
+
+  <section class="panel">
+    <div class="label">答案在</div>
+    <div class="range" id="rangeText">1<span class="tilde">~</span>100</div>
+    <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+    <div class="bar-ends"><span id="barMin">1</span><span id="barMax">100</span></div>
+    <div class="hint" id="rangeHint">从正中间猜起最快哦</div>
+  </section>
+
+  <section class="panel">
+    <form id="form" autocomplete="off">
+      <input id="guess" type="text" inputmode="numeric" placeholder="输入你猜的数" aria-label="你猜的数">
+      <button type="submit" class="go" id="go">猜！</button>
+    </form>
+    <div class="feedback" id="feedback">想想看，先猜中间那个数最快 🎯</div>
+    <div class="stats">
+      <span><b id="tries">0</b>已猜次数</span>
+      <span><b id="best">—</b>本档最佳</span>
+      <span><b id="ideal">7</b>理论最少</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>本局猜测</h2><span id="histCount">0 条</span></div>
+    <ol class="history" id="history"></ol>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>最近战绩</h2>
+      <button type="button" class="link" id="toggleRecords">展开</button>
+    </div>
+    <div class="records hidden" id="records"></div>
+    <p class="note">只保留最近 20 局，存在这台设备的浏览器里，不会上传。</p>
+  </section>
+
+  <div class="actions">
+    <button type="button" class="ghost" id="restart">🔄 换一局（同难度）</button>
+  </div>
+
+  <footer>
+    小提示：每次猜剩下区间的中间数，次数最少<br>
+    单文件离线可玩 · 刷新页面会开新的一局
+  </footer>
+</div>
+<div id="confetti"></div>
+
+<script id="core">
+(function(){
+  'use strict';
+  var $ = function(s){ return document.querySelector(s); };
+  var KEY = 'guessnum_v1';
+  var CFG = { '100':{lo:1,hi:100}, '1000':{lo:1,hi:1000}, '10000':{lo:1,hi:10000} };
+  var MODE_LABEL = { '100':'100 以内', '1000':'1000 以内', '10000':'1 万以内' };
+  var S = null;
+
+  function load(){
+    try{
+      var d = JSON.parse(localStorage.getItem(KEY));
+      if(d && typeof d === 'object') return { best:d.best||{}, records:d.records||[] };
+    }catch(e){}
+    return { best:{}, records:[] };
+  }
+  function save(d){ try{ localStorage.setItem(KEY, JSON.stringify(d)); }catch(e){} }
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function fmt(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+  function newGame(mode){
+    var c = CFG[mode] || CFG['100'];
+    S = {
+      mode: mode, lo:c.lo, hi:c.hi,
+      low:c.lo, high:c.hi, lowEx:false, highEx:false,
+      target: Math.floor(Math.random() * (c.hi - c.lo + 1)) + c.lo,
+      tries:0, history:[], done:false
+    };
+    Array.prototype.forEach.call(document.querySelectorAll('.mode'), function(b){
+      b.classList.toggle('active', b.getAttribute('data-max') === String(mode));
+    });
+    $('#go').textContent = '猜！';
+    $('#guess').value = '';
+    $('#feedback').className = 'feedback';
+    $('#feedback').innerHTML = '想想看，先猜中间那个数最快 🎯<br><span style="font-size:12px;opacity:.75">比如先猜 ' + fmt(Math.round((c.lo+c.hi)/2)) + '</span>';
+    $('#ideal').textContent = Math.ceil(Math.log(c.hi-c.lo+1)/Math.log(2));
+    render();
+    try{ $('#guess').focus(); }catch(e){}
+  }
+
+  function msg(html, kind){
+    var f = $('#feedback');
+    f.className = 'feedback' + (kind ? ' ' + kind : '');
+    f.innerHTML = html;
+  }
+
+  function rangeText(){ return fmt(S.low) + '<span class="tilde">~</span>' + fmt(S.high); }
+
+  function render(){
+    $('#rangeText').innerHTML = rangeText();
+    $('#barMin').textContent = fmt(S.lo);
+    $('#barMax').textContent = fmt(S.hi);
+    var span = S.hi - S.lo;
+    var left = (S.low - S.lo) / span * 100;
+    var width = Math.max(2, (S.high - S.low) / span * 100);
+    $('#barFill').style.left = left + '%';
+    $('#barFill').style.width = Math.min(width, 100-left) + '%';
+
+    var parts = [];
+    if(S.lowEx) parts.push('比 ' + fmt(S.low) + ' 大');
+    if(S.highEx) parts.push('比 ' + fmt(S.high) + ' 小');
+    $('#rangeHint').textContent = parts.length
+      ? '两端是猜过的数，答案' + parts.join('、') + '（不含两端）'
+      : '从正中间猜起最快哦';
+    $('#rangeHint').textContent += ' · 还剩 ' + fmt(S.high - S.low - 1 + (S.lowEx?0:1) + (S.highEx?0:1)) + ' 个可能';
+
+    $('#tries').textContent = S.tries;
+    var d = load();
+    $('#best').textContent = d.best[S.mode] ? d.best[S.mode] + ' 次' : '—';
+    $('#histCount').textContent = S.history.length + ' 条';
+
+    var rows = S.history.slice().reverse().map(function(h){
+      var cmp = h.cmp === 'win' ? '🎉 猜中啦' : (h.cmp === 'low' ? '📉 小了' : '📈 大了');
+      var tail = h.cmp === 'win' ? '答案就是它' : '→ ' + fmt(h.low) + ' ~ ' + fmt(h.high);
+      return '<li class="' + (h.cmp==='win'?'win':'') + '">' +
+        '<span class="n">#' + h.n + '</span>' +
+        '<span class="g">' + fmt(h.guess) + '</span>' +
+        '<span class="cmp">' + cmp + '</span>' +
+        '<span class="tail">' + tail + '</span></li>';
+    }).join('');
+    $('#history').innerHTML = rows || '<li class="empty">还没有猜过，试试从中间开始 🎯</li>';
+  }
+
+  function confetti(){
+    var box = $('#confetti');
+    var chars = ['🎉','⭐','🎊','✨','🏆','💚'];
+    var out = '';
+    for(var i=0;i<26;i++){
+      out += '<span class="conf" style="left:' + (Math.random()*96).toFixed(1) + '%;' +
+        'animation-delay:' + (Math.random()*0.7).toFixed(2) + 's;' +
+        'font-size:' + (16+Math.random()*16).toFixed(0) + 'px">' +
+        chars[i % chars.length] + '</span>';
+    }
+    box.innerHTML = out;
+    setTimeout(function(){ box.innerHTML = ''; }, 3200);
+  }
+
+  function rank(tries, ideal){
+    if(tries <= ideal) return '神准！正好是最优策略 🏆';
+    if(tries <= ideal + 3) return '很棒，再快一点点就更完美了 👍';
+    return '可以试试每次都猜剩下区间的中间数，会快很多 💡';
+  }
+
+  function win(g){
+    S.done = true;
+    S.history.push({ n:S.tries, guess:g, cmp:'win', low:S.low, high:S.high });
+    var d = load();
+    var prev = d.best[S.mode];
+    var isBest = !prev || S.tries < prev;
+    if(isBest) d.best[S.mode] = S.tries;
+    d.records.unshift({ mode:S.mode, target:S.target, tries:S.tries, t:Date.now() });
+    d.records = d.records.slice(0, 20);
+    save(d);
+    var ideal = Math.ceil(Math.log(S.hi-S.lo+1)/Math.log(2));
+    msg('🎉 猜中啦！答案就是 <b>' + fmt(S.target) + '</b>，用了 <b>' + S.tries + '</b> 次。' +
+        (isBest ? '<br>🎖️ 本档新纪录！' : '') + '<br><span style="font-size:13px;font-weight:400">' + rank(S.tries, ideal) + '</span>', 'win');
+    $('#go').textContent = '再来';
+    render();
+    renderRecords();
+    confetti();
+  }
+
+  function submit(e){
+    e.preventDefault();
+    if(S.done){ newGame(S.mode); return; }
+    var raw = $('#guess').value.trim();
+    $('#guess').value = '';
+    try{ $('#guess').focus(); }catch(err){}
+    if(!/^\d+$/.test(raw)){ msg('请输入一个正整数哦 🙏', 'warn'); return; }
+    var g = parseInt(raw, 10);
+    if(!isFinite(g) || g < S.lo || g > S.hi){
+      msg('要在 <b>' + fmt(S.lo) + ' ~ ' + fmt(S.hi) + '</b> 之间哦', 'warn'); return;
+    }
+    if((S.lowEx && g <= S.low) || (S.highEx && g >= S.high)){
+      msg('这个数已经排除啦～答案就在 <b>' + rangeText() + '</b> 之间（不含两端）', 'warn'); return;
+    }
+    var dup = false;
+    for(var i=0;i<S.history.length;i++){ if(S.history[i].guess === g){ dup = true; break; } }
+    if(dup){ msg('「' + fmt(g) + '」已经猜过啦，换一个数试试', 'warn'); return; }
+
+    S.tries++;
+    if(g === S.target){ win(g); return; }
+    var cmp;
+    if(g < S.target){ S.low = g; S.lowEx = true; cmp = 'low'; }
+    else { S.high = g; S.highEx = true; cmp = 'high'; }
+    S.history.push({ n:S.tries, guess:g, cmp:cmp, low:S.low, high:S.high });
+    render();
+    msg((cmp === 'low' ? '📉 <b>' + fmt(g) + '</b> 太小了！' : '📈 <b>' + fmt(g) + '</b> 太大了！') +
+        '<br>现在答案锁定在 <b>' + rangeText() + '</b> 之间' +
+        '<br><span style="font-size:12px;opacity:.8">（比 ' + fmt(S.low) + ' 大、比 ' + fmt(S.high) + ' 小）</span>',
+        cmp === 'low' ? 'down' : 'up');
+  }
+
+  function renderRecords(){
+    var d = load();
+    var box = $('#records');
+    if(!d.records.length){ box.innerHTML = '<div class="row"><span class="who">还没有战绩，先玩一局吧</span></div>'; return; }
+    box.innerHTML = d.records.map(function(r){
+      var dt = new Date(r.t);
+      var stamp = (dt.getMonth()+1) + '/' + dt.getDate() + ' ' +
+        String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+      return '<div class="row"><span>' + esc(MODE_LABEL[r.mode] || r.mode) +
+        ' · 答案 <b>' + esc(fmt(r.target)) + '</b></span>' +
+        '<span class="who">' + esc(r.tries) + ' 次 · ' + esc(stamp) + '</span></div>';
+    }).join('');
+  }
+
+  $('#form').addEventListener('submit', submit);
+  $('#restart').addEventListener('click', function(){ newGame(S.mode); });
+  $('#modes').addEventListener('click', function(e){
+    var b = e.target.closest ? e.target.closest('.mode') : null;
+    if(b) newGame(b.getAttribute('data-max'));
+  });
+  $('#toggleRecords').addEventListener('click', function(){
+    var box = $('#records');
+    var willShow = box.classList.contains('hidden');
+    box.classList.toggle('hidden', !willShow);
+    this.textContent = willShow ? '收起' : '展开';
+    if(willShow) renderRecords();
+  });
+
+  newGame('100');
+  renderRecords();
+  // 供自动化测试读取内部状态，不影响玩家体验
+  window.__guessNumber = {
+    state: function(){ return S; },
+    guess: function(n){ $('#guess').value = String(n); submit({ preventDefault:function(){} }); },
+    newGame: newGame
+  };
+})();
+</script>
+</body>
+</html>
